@@ -1,0 +1,11 @@
+# E2E: Disease Library shows content
+appId: com.cropdiseaseapp
+name: Library content
+
+---
+- launchApp
+- tapOn: "Library"
+- assertVisible: "Disease Library"
+- assertVisible: "Tomato"
+- assertVisible: "Corn"
+- assertVisible: "Potato"

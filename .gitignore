@@ -10,8 +10,10 @@ filtered_dataset/
 # Model weights & exports
 # =============================================================================
 checkpoints/*.pth
+exports/*.tflite
 *.onnx
-*.tflite
+*.onnx.data
+tf_saved_model/
 mobile/assets/model/*.tflite
 
 # =============================================================================
@@ -80,11 +82,13 @@ Desktop.ini
 mobile/node_modules/
 mobile/ios/Pods/
 mobile/ios/build/
+mobile/android/build/
 mobile/android/app/build/
 mobile/android/.gradle/
+mobile/android/local.properties
 mobile/.metro-health-check*
+
+# =============================================================================
+# Assignment & non-code files
+# =============================================================================
 assignment.pdf
-# =============================================================================
-# Kaggle
-# =============================================================================
-kaggle.json

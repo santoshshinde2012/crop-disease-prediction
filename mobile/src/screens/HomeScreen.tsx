@@ -30,19 +30,19 @@ export function HomeScreen() {
           <FeatureCard
             icon="camera"
             title="Instant Scan"
-            description="Take a photo of any leaf and get disease diagnosis in under a second."
+            description="Diagnose crop diseases in seconds from a single leaf photo."
             color={Colors.primary}
           />
           <FeatureCard
             icon="cloud-offline"
             title="Works Offline"
-            description="AI model runs entirely on your device. No internet needed."
+            description="All AI runs entirely on your device. No connection required."
             color="#1976D2"
           />
           <FeatureCard
             icon="library"
             title="Disease Library"
-            description="Browse all 15 supported diseases with symptoms, treatment, and prevention."
+            description="Browse 15 supported diseases with clear guidance and recommendations."
             color="#7B1FA2"
           />
         </View>
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingBottom: Spacing['4xl'],
+    paddingBottom: Spacing['5xl'],
   },
   features: {
     paddingHorizontal: Spacing.lg,

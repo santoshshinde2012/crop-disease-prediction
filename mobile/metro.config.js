@@ -4,7 +4,7 @@ const defaultConfig = getDefaultConfig(__dirname);
 
 const config = {
   resolver: {
-    assetExts: [...defaultConfig.resolver.assetExts, 'onnx'],
+    assetExts: [...defaultConfig.resolver.assetExts, 'tflite'],
   },
 };
 

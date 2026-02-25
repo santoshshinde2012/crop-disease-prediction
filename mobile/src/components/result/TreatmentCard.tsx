@@ -12,10 +12,7 @@ interface TreatmentCardProps {
 export function TreatmentCard({ treatment, isUrgent = false }: TreatmentCardProps) {
   return (
     <Card
-      style={[
-        styles.card,
-        isUrgent && styles.urgentCard,
-      ]}
+      style={isUrgent ? { ...styles.card, ...styles.urgentCard } : styles.card}
     >
       <View style={styles.header}>
         <Icon

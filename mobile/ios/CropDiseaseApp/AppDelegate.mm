@@ -22,7 +22,12 @@
 - (NSURL *)bundleURL
 {
 #if DEBUG
-  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
+  NSURL *url = [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
+  // Fallback when packager wasn't running at launch (e.g. app opened before Metro started)
+  if (url == nil) {
+    url = [NSURL URLWithString:@"http://127.0.0.1:8081/index.bundle?platform=ios&dev=true&minify=false"];
+  }
+  return url;
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif

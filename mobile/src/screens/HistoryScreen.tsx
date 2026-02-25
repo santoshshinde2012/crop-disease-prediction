@@ -10,6 +10,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Badge } from '../components/ui/Badge';
 import { getHistory, clearHistory, deleteEntry } from '../services/storage';
@@ -17,6 +18,7 @@ import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
 import type { HistoryEntry } from '../types';
 
 export function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   // Refresh history every time the screen comes into focus
@@ -61,7 +63,7 @@ export function HistoryScreen() {
 
   if (history.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={[styles.emptyContainer, { paddingTop: insets.top }]}>
         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
         <Icon name="time-outline" size={64} color={Colors.border} />
         <Text style={styles.emptyTitle}>No Predictions Yet</Text>
@@ -77,7 +79,7 @@ export function HistoryScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <Text style={styles.headerTitle}>Scan History</Text>
         <TouchableOpacity onPress={handleClear}>
           <Text style={styles.clearText}>Clear All</Text>
@@ -134,7 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing['2xl'],
     paddingBottom: Spacing.md,
   },
   headerTitle: {
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
+    borderRadius: Radius.lg,
     marginBottom: Spacing.md,
     overflow: 'hidden',
     ...Shadows.sm,
@@ -162,6 +163,8 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     resizeMode: 'cover',
+    borderTopLeftRadius: Radius.lg,
+    borderBottomLeftRadius: Radius.lg,
   },
   cardContent: {
     flex: 1,

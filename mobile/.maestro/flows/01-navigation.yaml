@@ -1,0 +1,16 @@
+# E2E: App launch and tab navigation
+# Run: from mobile/ → maestro test .maestro/flows/
+appId: com.cropdiseaseapp
+name: Navigation and tabs
+
+---
+- launchApp
+- assertVisible: "Scan a Leaf"
+- tapOn: "Scan a Leaf"
+- assertVisible:
+    id: "tab-bar"
+    optional: true
+- tapOn: "Library"
+- assertVisible: "Disease Library"
+- tapOn: "History"
+- assertVisible: "No Predictions Yet"

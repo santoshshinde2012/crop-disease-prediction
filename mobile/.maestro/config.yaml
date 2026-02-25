@@ -1,0 +1,5 @@
+# Maestro E2E config for Crop Disease App
+# Override appId when running: maestro test -e appId=org.reactjs.native.example.CropDiseaseApp
+# Android: com.cropdiseaseapp
+# iOS: org.reactjs.native.example.CropDiseaseApp
+appId: com.cropdiseaseapp

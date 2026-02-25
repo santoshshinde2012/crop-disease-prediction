@@ -43,10 +43,8 @@ function MainTabs() {
         },
         tabBarStyle: {
           backgroundColor: Colors.surface,
-          borderTopColor: Colors.border,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 4,
+          borderTopColor: Colors.borderLight,
+          paddingTop: 6,
         },
       })}
     >

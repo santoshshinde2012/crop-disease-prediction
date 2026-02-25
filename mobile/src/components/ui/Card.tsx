@@ -2,6 +2,7 @@ import React from 'react';
 import { View, ViewStyle, StyleSheet } from 'react-native';
 import { Colors, Radius, Shadows, Spacing } from '../../theme';
 
+
 interface CardProps {
   children: React.ReactNode;
   style?: ViewStyle;
@@ -18,7 +19,8 @@ export function Card({ children, style, variant = 'elevated' }: CardProps) {
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: Radius.md,
+    // Slightly larger radius for a more modern, premium feel
+    borderRadius: Radius.lg,
     padding: Spacing.lg,
     backgroundColor: Colors.surface,
   },
@@ -27,10 +29,12 @@ const styles = StyleSheet.create({
 const variantStyles = StyleSheet.create({
   elevated: {
     ...Shadows.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.borderLight,
   },
   outlined: {
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.borderLight,
   },
   filled: {
     backgroundColor: Colors.surfaceSubtle,

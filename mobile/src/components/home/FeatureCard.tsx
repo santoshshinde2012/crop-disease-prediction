@@ -34,8 +34,8 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.lg,
-    marginBottom: Spacing.md,
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   iconCircle: {
     width: 48,

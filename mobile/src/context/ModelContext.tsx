@@ -3,7 +3,7 @@ import { loadModel, predict, preprocessPixels, releaseModel } from '../services/
 import type { PredictionResult } from '../types';
 
 interface ModelContextValue {
-  /** Whether the ONNX model is loaded and ready */
+  /** Whether the TFLite model is loaded and ready */
   isReady: boolean;
   /** Error message if model failed to load */
   error: string | null;

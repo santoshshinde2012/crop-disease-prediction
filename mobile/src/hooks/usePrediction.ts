@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useModel } from '../context/ModelContext';
+import { extractPixels } from '../services/imageProcessor';
 import { savePrediction } from '../services/storage';
 import type { PredictionResult } from '../types';
 
@@ -10,12 +11,21 @@ interface UsePredictionReturn {
   result: PredictionResult | null;
   /** Error message if prediction failed */
   error: string | null;
-  /** Run prediction on RGBA pixel data and save to history */
-  analyze: (rgbaData: Uint8Array, imagePath: string) => Promise<PredictionResult | null>;
+  /** Analyze a leaf image: extract pixels → predict → save to history */
+  analyze: (imagePath: string) => Promise<PredictionResult | null>;
   /** Clear the current result */
   reset: () => void;
 }
 
+/**
+ * Orchestrates the full prediction pipeline.
+ *
+ * Separation of concerns:
+ *   - imageProcessor handles image I/O (resize + pixel extraction)
+ *   - ModelContext handles ML inference (preprocess + predict)
+ *   - storage handles persistence (save to AsyncStorage)
+ *   - This hook manages UI state (loading, error, result)
+ */
 export function usePrediction(): UsePredictionReturn {
   const { runPrediction, isReady } = useModel();
   const [loading, setLoading] = useState(false);
@@ -23,7 +33,7 @@ export function usePrediction(): UsePredictionReturn {
   const [error, setError] = useState<string | null>(null);
 
   const analyze = useCallback(
-    async (rgbaData: Uint8Array, imagePath: string): Promise<PredictionResult | null> => {
+    async (imagePath: string): Promise<PredictionResult | null> => {
       if (!isReady) {
         setError('Model is still loading. Please wait.');
         return null;
@@ -33,10 +43,10 @@ export function usePrediction(): UsePredictionReturn {
       setError(null);
 
       try {
-        const prediction = await runPrediction(rgbaData);
+        const rgbaPixels = await extractPixels(imagePath);
+        const prediction = await runPrediction(rgbaPixels);
         setResult(prediction);
 
-        // Save to local history
         await savePrediction(prediction, imagePath);
 
         return prediction;

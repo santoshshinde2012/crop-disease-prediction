@@ -1,70 +1,56 @@
-import { InferenceSession, Tensor } from 'onnxruntime-react-native';
-import RNFS from 'react-native-fs';
+import { loadTensorflowModel, TensorflowModel } from 'react-native-fast-tflite';
 import { Platform } from 'react-native';
 import classNames from '../../assets/data/class_names.json';
 import diseaseInfo from '../../assets/data/disease_info.json';
 import type { PredictionResult, ClassPrediction, Disease, DiseaseDatabase } from '../types';
 
-// ImageNet normalization constants (from src/config.py)
+// ImageNet normalization constants (matches src/config.py)
 const IMAGENET_MEAN = [0.485, 0.456, 0.406];
 const IMAGENET_STD = [0.229, 0.224, 0.225];
 const IMG_SIZE = 224;
 const NUM_CLASSES = 15;
 const TOP_K = 5;
-const CONFIDENCE_THRESHOLD = 0.5;
+
+/** Minimum confidence to consider a prediction reliable */
+export const CONFIDENCE_THRESHOLD = 0.5;
 
 const diseases = diseaseInfo as DiseaseDatabase;
 
-let session: InferenceSession | null = null;
+let model: TensorflowModel | null = null;
+let inputLayout: 'nhwc' | 'nchw' = 'nhwc';
 
 /**
- * Get the path to the bundled ONNX model asset.
+ * Load TFLite model for on-device inference.
  *
- * On iOS, assets are in the main bundle.
- * On Android, they need to be copied from the APK to a readable location.
+ * Uses platform-specific hardware acceleration:
+ * - iOS: CoreML delegate (Neural Engine / GPU)
+ * - Android: GPU delegate, fallback to CPU
  */
-async function getModelPath(): Promise<string> {
-  const modelName = 'crop_disease_classifier.onnx';
+export async function loadModel(): Promise<void> {
+  if (model) return;
 
-  if (Platform.OS === 'ios') {
-    // On iOS, bundled assets are in the main bundle
-    const bundlePath = `${RNFS.MainBundlePath}/${modelName}`;
-    const exists = await RNFS.exists(bundlePath);
-    if (exists) return bundlePath;
+  const delegate = Platform.OS === 'ios' ? 'core-ml' : 'android-gpu';
 
-    // Fallback: check assets directory
-    const assetsPath = `${RNFS.MainBundlePath}/assets/model/${modelName}`;
-    return assetsPath;
+  try {
+    model = await loadTensorflowModel(
+      require('../../assets/model/crop_disease_classifier.tflite'),
+      delegate,
+    );
+  } catch {
+    // Fallback to CPU if hardware delegate unavailable
+    model = await loadTensorflowModel(
+      require('../../assets/model/crop_disease_classifier.tflite'),
+    );
   }
 
-  // On Android, copy from assets to document directory
-  const destPath = `${RNFS.DocumentDirectoryPath}/${modelName}`;
-  const exists = await RNFS.exists(destPath);
-  if (!exists) {
-    await RNFS.copyFileAssets(`model/${modelName}`, destPath);
-  }
-  return destPath;
-}
-
-/**
- * Load ONNX model for inference.
- *
- * Uses ONNX Runtime which provides:
- * - iOS: CoreML execution provider (Neural Engine / GPU)
- * - Android: NNAPI execution provider, fallback to CPU
- */
-export async function loadModel(): Promise<InferenceSession> {
-  if (session) return session;
-
-  const modelPath = await getModelPath();
-  session = await InferenceSession.create(modelPath);
-
-  return session;
+  // Detect input layout from model metadata
+  const shape = model.inputs[0].shape;
+  inputLayout = shape[1] === 3 ? 'nchw' : 'nhwc';
 }
 
 /** Check if model is loaded and ready */
 export function isModelLoaded(): boolean {
-  return session !== null;
+  return model !== null;
 }
 
 /** Softmax over raw logits — numerically stable */
@@ -76,16 +62,16 @@ function softmax(logits: number[]): number[] {
 }
 
 /**
- * Preprocess raw RGBA pixel data into normalized CHW float32 tensor.
+ * Preprocess raw RGBA pixel data into a normalized float32 tensor.
  *
  * Pipeline (matches src/inference/predictor.py):
  *   1. Read RGB channels from RGBA buffer (skip alpha)
  *   2. Scale to [0, 1]
  *   3. Normalize with ImageNet mean/std
- *   4. Layout as CHW (channels-first) for the model
+ *   4. Layout as NHWC or NCHW depending on model input shape
  *
  * @param rgbaData - Raw pixel buffer (RGBA format, must be 224x224)
- * @returns Float32Array shaped [1, 3, 224, 224]
+ * @returns Float32Array matching model input shape
  */
 export function preprocessPixels(rgbaData: Uint8Array): Float32Array {
   const expectedLength = IMG_SIZE * IMG_SIZE * 4;
@@ -95,15 +81,27 @@ export function preprocessPixels(rgbaData: Uint8Array): Float32Array {
     );
   }
 
-  const tensor = new Float32Array(1 * 3 * IMG_SIZE * IMG_SIZE);
   const pixelCount = IMG_SIZE * IMG_SIZE;
+  const tensor = new Float32Array(pixelCount * 3);
 
-  for (let i = 0; i < pixelCount; i++) {
-    const rgbaOffset = i * 4;
-    for (let c = 0; c < 3; c++) {
-      const value = rgbaData[rgbaOffset + c] / 255.0;
-      const normalized = (value - IMAGENET_MEAN[c]) / IMAGENET_STD[c];
-      tensor[c * pixelCount + i] = normalized;
+  if (inputLayout === 'nchw') {
+    // NCHW: [1, 3, 224, 224] — channels first (PyTorch convention)
+    for (let i = 0; i < pixelCount; i++) {
+      const rgbaOffset = i * 4;
+      for (let c = 0; c < 3; c++) {
+        const value = rgbaData[rgbaOffset + c] / 255.0;
+        tensor[c * pixelCount + i] = (value - IMAGENET_MEAN[c]) / IMAGENET_STD[c];
+      }
+    }
+  } else {
+    // NHWC: [1, 224, 224, 3] — channels last (TFLite convention)
+    for (let i = 0; i < pixelCount; i++) {
+      const rgbaOffset = i * 4;
+      const tensorOffset = i * 3;
+      for (let c = 0; c < 3; c++) {
+        const value = rgbaData[rgbaOffset + c] / 255.0;
+        tensor[tensorOffset + c] = (value - IMAGENET_MEAN[c]) / IMAGENET_STD[c];
+      }
     }
   }
 
@@ -113,31 +111,25 @@ export function preprocessPixels(rgbaData: Uint8Array): Float32Array {
 /**
  * Run disease classification on preprocessed image data.
  *
- * @param inputTensor - Preprocessed Float32Array [1, 3, 224, 224]
+ * @param inputTensor - Preprocessed Float32Array [1, 3, 224, 224] or [1, 224, 224, 3]
  * @returns Full prediction result with disease info, top-K predictions
  * @throws Error if model not loaded or output is malformed
  */
 export async function predict(inputTensor: Float32Array): Promise<PredictionResult> {
-  if (!session) {
+  if (!model) {
     throw new Error('Model not loaded. Call loadModel() first.');
   }
 
-  // Create ONNX Runtime tensor
-  const feeds = {
-    input: new Tensor('float32', inputTensor, [1, 3, IMG_SIZE, IMG_SIZE]),
-  };
+  const output = model.run([inputTensor]);
+  const rawOutput = output[0];
 
-  // Run inference
-  const output = await session.run(feeds);
-  const outputTensor = output.output;
-
-  if (!outputTensor || outputTensor.data.length !== NUM_CLASSES) {
+  if (!rawOutput || rawOutput.length !== NUM_CLASSES) {
     throw new Error(
-      `Unexpected model output: expected ${NUM_CLASSES} values, got ${outputTensor?.data.length ?? 0}`,
+      `Unexpected model output: expected ${NUM_CLASSES} values, got ${rawOutput?.length ?? 0}`,
     );
   }
 
-  const logits = Array.from(outputTensor.data as Float32Array);
+  const logits = Array.from(new Float32Array(rawOutput as ArrayBuffer));
 
   // Apply softmax to get probabilities
   const probabilities = softmax(logits);
@@ -170,10 +162,7 @@ export async function predict(inputTensor: Float32Array): Promise<PredictionResu
   };
 }
 
-/** Minimum confidence to consider a prediction reliable */
-export { CONFIDENCE_THRESHOLD };
-
 /** Release model resources */
 export function releaseModel(): void {
-  session = null;
+  model = null;
 }

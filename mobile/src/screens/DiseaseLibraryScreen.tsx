@@ -7,6 +7,7 @@ import {
   StyleSheet,
   StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { DiseaseListItem } from '../components/library/DiseaseListItem';
 import diseaseData from '../../assets/data/disease_info.json';
@@ -22,6 +23,7 @@ interface Section {
 }
 
 export function DiseaseLibraryScreen() {
+  const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<CropFilter>('All');
 
   const sections = useMemo((): Section[] => {
@@ -47,7 +49,7 @@ export function DiseaseLibraryScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
         <Text style={styles.title}>Disease Library</Text>
         <Text style={styles.subtitle}>{totalCount} diseases</Text>
       </View>
@@ -106,7 +108,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing['2xl'],
     paddingBottom: Spacing.sm,
   },
   title: {
@@ -131,7 +132,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceMuted,
   },
   filterTabActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: Colors.primaryLight,
   },
   filterText: {
     ...Typography.bodySmall,
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   filterTextActive: {
-    color: Colors.textOnPrimary,
+    color: Colors.primary,
     fontWeight: '600',
   },
   listContent: {

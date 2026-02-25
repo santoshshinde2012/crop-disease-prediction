@@ -13,14 +13,16 @@ A deep learning pipeline to classify plant diseases from leaf images using the P
 5. [Running the Streamlit App](#running-the-streamlit-app)
 6. [Running the REST API](#running-the-rest-api)
 7. [Mobile App (React Native)](#mobile-app-react-native)
-8. [Dataset](#dataset)
-9. [Approach](#approach)
-10. [Model Architecture](#model-architecture)
-11. [Training Strategy](#training-strategy)
-12. [Model Performance](#model-performance)
-13. [Visualizations](#visualizations)
-14. [Business Recommendation](#business-recommendation)
-15. [Tech Stack](#tech-stack)
+8. [End-to-End Testing](#end-to-end-testing)
+9. [Dataset](#dataset)
+10. [Approach](#approach)
+11. [Model Architecture](#model-architecture)
+12. [Training Strategy](#training-strategy)
+13. [Model Performance](#model-performance)
+14. [Visualizations](#visualizations)
+15. [Business Recommendation](#business-recommendation)
+16. [Tech Stack](#tech-stack)
+17. [Documentation](#documentation)
 
 ---
 
@@ -51,8 +53,8 @@ cd .. && streamlit run streamlit_app/app.py
 uvicorn api.main:app --reload
 
 # 8. Run the mobile app (React Native)
-pip install ai-edge-torch && python mobile/scripts/export_model.py
-cd mobile && npm install && npx react-native run-ios
+pip install torch torchvision onnx==1.16.2 onnx2tf tensorflow && python scripts/export_model.py
+cd mobile && npm install && cd ios && pod install && cd .. && npx react-native run-ios
 ```
 
 ---
@@ -115,9 +117,17 @@ crop-prediction/
 │   ├── src/screens/                       #   Home, Camera, Result, History, Library
 │   ├── src/components/                    #   Reusable UI (Card, Badge, ConfidenceBar)
 │   ├── src/services/classifier.ts         #   TFLite model load + inference
-│   └── scripts/export_model.py            #   PyTorch → TFLite conversion
+│   └── src/services/imageProcessor.ts     #   Image resize + pixel extraction
+├── scripts/                               # Project-level utility scripts
+│   ├── export_model.py                    #   PyTorch → TFLite conversion for mobile
+│   └── sync_mobile_assets.py              #   Sync disease data to mobile assets
+├── wiki/                                  # Detailed guides and documentation
+│   ├── execution-guide.md                 #   End-to-end execution order for all components
+│   └── architecture.md                    #   Mermaid architecture diagrams
 ├── checkpoints/
 │   └── best_model.pth                     # Saved model weights (9.3 MB)
+├── exports/
+│   └── crop_disease_classifier.tflite     # TFLite model for mobile (9.1 MB)
 ├── data/
 │   └── raw/                               # Symlink to PlantVillage color images
 ├── outputs/
@@ -377,15 +387,15 @@ api/
 
 ## Mobile App (React Native)
 
-An offline-first React Native app that runs disease classification entirely on-device using **TFLite** — no server or internet required.
+An offline-first React Native app that runs disease classification entirely on-device using **TFLite** via `react-native-fast-tflite` (CoreML on iOS, GPU delegate on Android) — no server or internet required.
 
 ### Quick Start
 
 ```bash
 # 1. Export the PyTorch model to TFLite format
-pip install ai-edge-torch torch torchvision
-python mobile/scripts/export_model.py
-# Output: mobile/assets/model/crop_disease_classifier.tflite
+pip install torch torchvision onnx==1.16.2 onnx2tf tensorflow
+python scripts/export_model.py
+# Output: exports/crop_disease_classifier.tflite (+ copied to mobile/assets/model/)
 
 # 2. Install JS dependencies
 cd mobile
@@ -404,17 +414,17 @@ npx react-native run-android
 ### How It Works (Offline)
 
 ```
-Camera → Resize 224x224 → ImageNet Normalize → TFLite Model → Softmax → Result + Treatment Info
-                           (mean/std baked in)   (on-device)    (top-5)   (from bundled JSON)
+Camera → Resize 224×224 → ImageNet Normalize → TFLite Model → Softmax → Result + Treatment Info
+                           (mean/std in code)   (on-device)    (top-5)   (from bundled JSON)
 ```
 
 The app bundles everything needed for offline operation:
 
 | Asset | Size | Source |
 |-------|------|--------|
-| TFLite model (FP16) | ~4.5 MB | `checkpoints/best_model.pth` → exported by `scripts/export_model.py` |
-| Class names | <1 KB | `outputs/metrics/class_names.json` |
-| Disease info | ~15 KB | `src/data/disease_info.py` → converted to JSON |
+| TFLite model | ~9 MB | `checkpoints/best_model.pth` → `exports/crop_disease_classifier.tflite` via `scripts/export_model.py` |
+| Class names | <1 KB | `outputs/metrics/class_names.json` or `mobile/assets/data/class_names.json` |
+| Disease info | ~15 KB | `src/data/disease_info.py` → converted to JSON in `mobile/assets/data/` |
 
 ### Screens
 
@@ -431,6 +441,8 @@ The app bundles everything needed for offline operation:
 | Library | Purpose |
 |---------|---------|
 | `react-native-fast-tflite` | On-device TFLite inference (CoreML on iOS, GPU delegate on Android) |
+| `react-native-image-resizer` | Image resize to model input dimensions (224x224) |
+| `jpeg-js` | Pure-JS JPEG decoding for pixel extraction |
 | `react-native-vision-camera` | Camera capture with permissions handling |
 | `react-native-reanimated` | Smooth animations (confidence bars, card expand) |
 | `react-native-linear-gradient` | Gradient hero and buttons |
@@ -442,11 +454,36 @@ The app bundles everything needed for offline operation:
 
 - **TypeScript strict mode** — All files typed, no `any` types
 - **Component-driven architecture** — Reusable UI primitives (`Card`, `Button`, `Badge`, `ConfidenceBar`) + feature components
-- **React Context** for model lifecycle — load once on mount, expose `runPrediction()` via `useModel()` hook
-- **Separation of concerns** — `services/` (business logic), `components/` (UI), `screens/` (composition), `theme/` (design tokens)
+- **React Context** for model lifecycle — load TFLite once on mount, expose `runPrediction()` via `useModel()` hook
+- **Separation of concerns** — `services/classifier.ts` (inference), `services/imageProcessor.ts` (image I/O), `hooks/usePrediction.ts` (orchestration), `components/` (UI), `screens/` (composition), `theme/` (design tokens)
 - **Design system** — Consistent color palette, typography scale, spacing scale, shadow presets matching the web app
 - **Model output validation** — Runtime checks on TFLite output shape before processing
 - **Input validation** — Pixel data length check before preprocessing
+
+---
+
+## End-to-End Testing (Mobile — Maestro)
+
+Maestro runs UI flows on an iOS simulator or Android emulator: launch app, navigate tabs, open Library and History.
+
+**Requirements:** [Maestro CLI](https://maestro.mobile.dev/getting-started/installation), built app, and TFLite model at `mobile/assets/model/crop_disease_classifier.tflite`.
+
+```bash
+# Install Maestro (macOS)
+curl -Ls "https://get.maestro.mobile.dev" | bash
+
+# From mobile/
+cd mobile
+maestro test .maestro/flows/
+```
+
+- **Android:** uses `appId: com.cropdiseaseapp` (default in `.maestro/config.yaml`).
+- **iOS:** override app id: `maestro test -e appId=org.reactjs.native.example.CropDiseaseApp .maestro/flows/`
+
+| Flow | What it does |
+|------|----------------|
+| `01-navigation.yaml` | Launch app → tap "Scan a Leaf" → Library tab → History tab, assert empty state |
+| `02-library-content.yaml` | Open Library, assert Tomato / Corn / Potato visible |
 
 ---
 
@@ -617,13 +654,13 @@ For farmer-facing mobile application, I recommend deploying **MobileNetV2 with t
 
 1. **Production-Ready Accuracy**: 97.8% across 15 disease classes with no class below 91% — suitable for real-world field diagnosis.
 
-2. **Mobile-Optimized**: At 9.3 MB (reducible to ~3 MB with ONNX INT8 quantization), the model enables **offline functionality** — critical for farmers in rural areas with limited connectivity.
+2. **Mobile-Optimized**: At 9.3 MB (reducible to ~3 MB with TFLite INT8 post-training quantization), the model enables **offline functionality** — critical for farmers in rural areas with limited connectivity.
 
 3. **Fast Inference**: ~9 ms on GPU, ~30 ms on mobile devices. Farmers get instant diagnosis from a single photo.
 
 4. **Recommended Deployment Path**:
-   - Export to **ONNX** format
-   - Convert to **CoreML** (iOS) / **TFLite** (Android)
+   - Export to **TFLite** format (done: `crop_disease_classifier.tflite`)
+   - Uses **CoreML** delegate (iOS) / **GPU** delegate (Android) via `react-native-fast-tflite`
    - Apply **INT8 post-training quantization** for further size reduction (<1% accuracy loss)
    - Integrate with camera pipeline for real-time field use
 
@@ -643,5 +680,17 @@ For farmer-facing mobile application, I recommend deploying **MobileNetV2 with t
 | Data Processing | pandas, NumPy |
 | Demo App | Streamlit (multi-page with custom CSS) |
 | REST API | FastAPI + Uvicorn (OpenAPI docs, Pydantic v2) |
+| Mobile Inference | TFLite via react-native-fast-tflite (CoreML / GPU delegate) |
 | Notebook | Jupyter |
 | Hardware | Apple MPS (M-series GPU) / CUDA / CPU |
+
+---
+
+## Documentation
+
+Detailed guides are available in the [`wiki/`](wiki/) directory:
+
+| Document | Description |
+|----------|-------------|
+| [`execution-guide.md`](wiki/execution-guide.md) | Step-by-step execution order for running all components end-to-end (notebook → Streamlit → REST API → mobile) |
+| [`architecture.md`](wiki/architecture.md) | Mermaid architecture diagrams — system overview, training pipeline, model export, inference flow |

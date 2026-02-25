@@ -1,12 +1,15 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Alert,
   Platform,
   Linking,
+  StatusBar,
+  Image,
 } from 'react-native';
 import {
   Camera,
@@ -16,15 +19,20 @@ import {
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { LoadingOverlay } from '../components/ui/LoadingOverlay';
+import { Button } from '../components/ui/Button';
 import { useModel } from '../context/ModelContext';
-import { savePrediction } from '../services/storage';
-import { preprocessPixels, predict } from '../services/classifier';
-import { Colors, Typography, Spacing } from '../theme';
-import type { RootStackParamList } from '../types';
+import { usePrediction } from '../hooks/usePrediction';
+import { CONFIDENCE_THRESHOLD } from '../services/classifier';
+import { Colors, Typography, Spacing, Shadows } from '../theme';
+import type { RootStackParamList, PredictionResult } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Bundled demo image for simulator testing
+const demoLeafImage = require('../../assets/images/demo_leaf.png');
 
 export function CameraScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -32,42 +40,39 @@ export function CameraScreen() {
   const device = useCameraDevice('back');
   const { hasPermission, requestPermission } = useCameraPermission();
   const { isReady } = useModel();
-  const [loading, setLoading] = useState(false);
+  const { loading, analyze } = usePrediction();
+  const insets = useSafeAreaInsets();
 
-  const handleCapture = useCallback(async () => {
-    if (!camera.current || loading || !isReady) return;
-    setLoading(true);
+  const navigateWithResult = useCallback(
+    (result: PredictionResult | null, imagePath: string) => {
+      if (!result) return;
 
-    try {
-      const photo = await camera.current.takePhoto({
-        qualityPrioritization: 'speed',
-      });
-      const photoPath = Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
-
-      // In a real app, resize to 224x224 and get RGBA pixel data here.
-      // This requires a native module or react-native-image-resizer.
-      // For now, we demonstrate the flow:
-      const dummyPixels = new Uint8Array(224 * 224 * 4); // placeholder
-      const tensor = preprocessPixels(dummyPixels);
-      const result = await predict(tensor);
-
-      if (result.confidence < 0.5) {
+      if (result.confidence < CONFIDENCE_THRESHOLD) {
         Alert.alert(
           'Low Confidence',
           'Could not clearly identify the disease. Try again with better lighting and a closer shot.',
           [{ text: 'OK' }],
         );
       } else {
-        await savePrediction(result, photoPath);
-        navigation.navigate('Result', { result, imagePath: photoPath });
+        navigation.navigate('Result', { result, imagePath });
       }
+    },
+    [navigation],
+  );
+
+  const handleCapture = useCallback(async () => {
+    if (!camera.current || loading || !isReady) return;
+
+    try {
+      const photo = await camera.current.takePhoto();
+      const photoPath = Platform.OS === 'android' ? `file://${photo.path}` : photo.path;
+      const result = await analyze(photoPath);
+      navigateWithResult(result, photoPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to analyze image.';
       Alert.alert('Error', message);
-    } finally {
-      setLoading(false);
     }
-  }, [loading, isReady, navigation]);
+  }, [loading, isReady, analyze, navigateWithResult]);
 
   const handleGalleryPick = useCallback(async () => {
     const response = await launchImageLibrary({
@@ -79,51 +84,122 @@ export function CameraScreen() {
 
     if (response.didCancel || !response.assets?.[0]?.uri) return;
 
-    setLoading(true);
     try {
       const imagePath = response.assets[0].uri;
-      const dummyPixels = new Uint8Array(224 * 224 * 4); // placeholder
-      const tensor = preprocessPixels(dummyPixels);
-      const result = await predict(tensor);
-
-      await savePrediction(result, imagePath);
-      navigation.navigate('Result', { result, imagePath });
+      const result = await analyze(imagePath);
+      navigateWithResult(result, imagePath);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to analyze image.';
       Alert.alert('Error', message);
-    } finally {
-      setLoading(false);
     }
-  }, [navigation]);
+  }, [analyze, navigateWithResult]);
+
+  const handleUseDemoImage = useCallback(async () => {
+    if (loading || !isReady) return;
+
+    try {
+      const imageSource = Image.resolveAssetSource(demoLeafImage);
+      const imagePath = imageSource.uri;
+      const result = await analyze(imagePath);
+      navigateWithResult(result, imagePath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to analyze demo image.';
+      Alert.alert('Error', message);
+    }
+  }, [loading, isReady, analyze, navigateWithResult]);
 
   // Permission not granted
   if (!hasPermission) {
     return (
-      <View style={styles.permissionContainer}>
-        <Icon name="camera-outline" size={64} color={Colors.textSecondary} />
+      <View style={[styles.permissionContainer, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+        <View style={styles.illustrationOuter}>
+          <View style={styles.illustrationInner}>
+            <Icon name="camera-outline" size={36} color={Colors.primary} />
+          </View>
+        </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
         <Text style={styles.permissionText}>
           We need camera access to scan leaf images for disease detection.
         </Text>
-        <TouchableOpacity
-          style={styles.permissionButton}
-          onPress={async () => {
-            const granted = await requestPermission();
-            if (!granted) Linking.openSettings();
-          }}
-        >
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
+        <View style={styles.permissionButtons}>
+          <Button
+            title="Grant Permission"
+            onPress={async () => {
+              const granted = await requestPermission();
+              if (!granted) Linking.openSettings();
+            }}
+            icon={<Icon name="lock-open-outline" size={20} color={Colors.textOnPrimary} />}
+            style={styles.fullWidthButton}
+          />
+          <Button
+            title="Browse Photo Library"
+            variant="outline"
+            onPress={handleGalleryPick}
+            icon={<Icon name="images-outline" size={20} color={Colors.primary} />}
+            style={styles.fullWidthButton}
+          />
+        </View>
       </View>
     );
   }
 
-  // No camera device
+  // No camera device (e.g. iOS simulator)
   if (!device) {
     return (
-      <View style={styles.permissionContainer}>
-        <Icon name="camera-outline" size={64} color={Colors.textSecondary} />
-        <Text style={styles.permissionTitle}>No Camera Found</Text>
+      <View style={styles.noDeviceContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+        <ScrollView
+          contentContainerStyle={[styles.noDeviceScroll, { paddingTop: insets.top + Spacing['3xl'], paddingBottom: insets.bottom + Spacing['3xl'] }]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {/* Illustration */}
+          <View style={styles.illustrationOuter}>
+            <View style={styles.illustrationInner}>
+              <Icon name="leaf" size={36} color={Colors.primary} />
+            </View>
+          </View>
+
+          {/* Text */}
+          <Text style={styles.noDeviceTitle}>Scan a Leaf</Text>
+          <Text style={styles.noDeviceText}>
+            No camera detected. You can still analyze leaf images from your photo library or use the
+            bundled demo image to try the experience.
+          </Text>
+
+          {/* Model status indicator */}
+          <View style={styles.modelStatusRow}>
+            <Icon
+              name={isReady ? 'checkmark-circle' : 'hourglass-outline'}
+              size={18}
+              color={isReady ? Colors.primaryLight : Colors.severityModerate}
+            />
+            <Text style={[styles.modelStatusText, { color: isReady ? Colors.primary : Colors.severityModerate }]}>
+              {isReady ? 'Model ready' : 'Loading model...'}
+            </Text>
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.noDeviceButtons}>
+            <Button
+              title="Browse Photo Library"
+              onPress={handleGalleryPick}
+              icon={<Icon name="images" size={20} color={Colors.textOnPrimary} />}
+              style={styles.fullWidthButton}
+            />
+            <Button
+              title="Use Demo Image"
+              variant="outline"
+              onPress={handleUseDemoImage}
+              disabled={!isReady}
+              icon={<Icon name="leaf-outline" size={20} color={Colors.primary} />}
+              style={styles.fullWidthButton}
+            />
+          </View>
+        </ScrollView>
+
+        <LoadingOverlay visible={loading} message="Analyzing image..." />
       </View>
     );
   }
@@ -142,7 +218,7 @@ export function CameraScreen() {
       {/* Guide overlay */}
       <View style={styles.overlay}>
         {/* Top bar */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, { paddingTop: insets.top + Spacing.md }]}>
           <Text style={styles.instruction}>
             Position the leaf within the circle
           </Text>
@@ -152,7 +228,7 @@ export function CameraScreen() {
         <View style={styles.guideCircle} />
 
         {/* Bottom controls */}
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.xl }]}>
           {/* Gallery button */}
           <TouchableOpacity style={styles.sideButton} onPress={handleGalleryPick}>
             <Icon name="images" size={28} color={Colors.textOnDark} />
@@ -198,7 +274,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   topBar: {
-    paddingTop: Spacing['5xl'],
     paddingHorizontal: Spacing['2xl'],
     alignItems: 'center',
   },
@@ -224,7 +299,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingBottom: Spacing['4xl'],
     paddingHorizontal: Spacing['2xl'],
   },
   sideButton: {
@@ -250,34 +324,91 @@ const styles = StyleSheet.create({
     borderRadius: 31,
     backgroundColor: Colors.textOnDark,
   },
+  // Shared illustration style
+  illustrationOuter: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.surfaceSubtle,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  illustrationInner: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.md,
+  },
   // Permission screen
   permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
-    paddingHorizontal: Spacing['3xl'],
-    gap: Spacing.lg,
+    paddingHorizontal: Spacing['2xl'],
+    paddingBottom: Spacing['4xl'],
   },
   permissionTitle: {
-    ...Typography.h2,
+    ...Typography.h1,
     color: Colors.textPrimary,
     textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
   permissionText: {
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
+    marginBottom: Spacing['3xl'],
+    paddingHorizontal: Spacing.lg,
   },
-  permissionButton: {
-    backgroundColor: Colors.primary,
+  permissionButtons: {
+    width: '100%',
+    gap: Spacing.md,
+  },
+  // No device (simulator) state
+  noDeviceContainer: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  noDeviceScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Spacing['2xl'],
-    paddingVertical: Spacing.md,
-    borderRadius: 12,
-    marginTop: Spacing.lg,
   },
-  permissionButtonText: {
-    ...Typography.button,
-    color: Colors.textOnPrimary,
+  noDeviceTitle: {
+    ...Typography.h1,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  noDeviceText: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  modelStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing['3xl'],
+  },
+  modelStatusText: {
+    ...Typography.bodySmall,
+    fontWeight: '600',
+  },
+  noDeviceButtons: {
+    width: '100%',
+    gap: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  fullWidthButton: {
+    width: '100%',
   },
 });

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Colors, Gradients, Typography, Spacing, Radius } from '../../theme';
+import { Colors, Gradients, Typography, Spacing, Radius, Shadows } from '../../theme';
 
 interface ButtonProps {
   title: string;
@@ -100,10 +100,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing['2xl'],
     borderRadius: Radius.lg,
     gap: Spacing.sm,
-    minHeight: 50,
+    minHeight: 52,
   },
   primary: {
     // gradient handles background
+    ...Shadows.lg,
+    overflow: 'visible',
   },
   primaryText: {
     color: Colors.textOnPrimary,

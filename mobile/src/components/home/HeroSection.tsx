@@ -1,24 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Gradients, Typography, Spacing, Colors } from '../../theme';
 
 export function HeroSection() {
+  const insets = useSafeAreaInsets();
+
   return (
     <LinearGradient
       colors={[...Gradients.hero]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top + Spacing['2xl'] }]}
     >
       <View style={styles.iconContainer}>
         <Icon name="leaf" size={48} color={Colors.accent} />
       </View>
       <Text style={styles.title}>Crop Disease{'\n'}Classifier</Text>
       <Text style={styles.subtitle}>
-        AI-powered disease detection for Tomato, Potato, and Corn crops.
-        Snap a leaf photo for instant diagnosis.
+        AI-powered leaf diagnostics for Tomato, Potato, and Corn — designed for fast, reliable field decisions.
       </Text>
       <View style={styles.statsRow}>
         <View style={styles.stat}>
@@ -43,7 +45,6 @@ export function HeroSection() {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing['2xl'],
-    paddingTop: Spacing['4xl'],
     paddingBottom: Spacing['3xl'],
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
