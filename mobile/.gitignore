@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+ios/build/
+ios/Pods/
+android/app/build/
+android/.gradle/
+
+# Metro
+.metro-health-check*
+
+# Bundle
+*.jsbundle
+
+# Environment
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+
+# CocoaPods
+ios/Podfile.lock
