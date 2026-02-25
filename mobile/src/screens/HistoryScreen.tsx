@@ -65,7 +65,9 @@ export function HistoryScreen() {
     return (
       <View style={[styles.emptyContainer, { paddingTop: insets.top }]}>
         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
-        <Icon name="time-outline" size={64} color={Colors.border} />
+        <View style={styles.emptyIconCircle}>
+          <Icon name="time-outline" size={48} color={Colors.border} />
+        </View>
         <Text style={styles.emptyTitle}>No Predictions Yet</Text>
         <Text style={styles.emptyText}>
           Your scan history will appear here after you analyze a leaf.
@@ -79,9 +81,10 @@ export function HistoryScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <Text style={styles.headerTitle}>Scan History</Text>
-        <TouchableOpacity onPress={handleClear}>
+        <TouchableOpacity onPress={handleClear} style={styles.clearButton} activeOpacity={0.7}>
+          <Icon name="trash-outline" size={16} color={Colors.severityHigh} />
           <Text style={styles.clearText}>Clear All</Text>
         </TouchableOpacity>
       </View>
@@ -142,6 +145,13 @@ const styles = StyleSheet.create({
     ...Typography.h2,
     color: Colors.textPrimary,
   },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
   clearText: {
     ...Typography.bodySmall,
     color: Colors.severityHigh,
@@ -200,6 +210,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing['3xl'],
     gap: Spacing.md,
   },
+  emptyIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.surfaceMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
   emptyTitle: {
     ...Typography.h2,
     color: Colors.textPrimary,
@@ -209,5 +228,6 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 24,
   },
 });

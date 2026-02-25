@@ -2,6 +2,7 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ViewStyle,
   ActivityIndicator,
@@ -13,6 +14,7 @@ interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
+  size?: 'default' | 'large';
   loading?: boolean;
   disabled?: boolean;
   icon?: React.ReactNode;
@@ -23,37 +25,43 @@ export function Button({
   title,
   onPress,
   variant = 'primary',
+  size = 'default',
   loading = false,
   disabled = false,
   icon,
   style,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const isLarge = size === 'large';
 
   if (variant === 'primary') {
     return (
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={isDisabled}
-        activeOpacity={0.8}
-        style={style}
-      >
-        <LinearGradient
-          colors={isDisabled ? ['#9E9E9E', '#BDBDBD'] : [...Gradients.primary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.base, styles.primary]}
+      <View style={[styles.shadowWrapper, isLarge && styles.shadowWrapperLarge, style]}>
+        <TouchableOpacity
+          onPress={onPress}
+          disabled={isDisabled}
+          activeOpacity={0.8}
+          style={[styles.touchable, isLarge && styles.touchableLarge]}
         >
-          {loading ? (
-            <ActivityIndicator color={Colors.textOnPrimary} size="small" />
-          ) : (
-            <>
-              {icon}
-              <Text style={[Typography.button, styles.primaryText]}>{title}</Text>
-            </>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={isDisabled ? ['#9E9E9E', '#BDBDBD'] : [...Gradients.primary]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.base, isLarge && styles.baseLarge]}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+            ) : (
+              <>
+                {icon}
+                <Text style={[Typography.button, styles.primaryText, isLarge && styles.textLarge]}>
+                  {title}
+                </Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     );
   }
 
@@ -64,6 +72,7 @@ export function Button({
       activeOpacity={0.7}
       style={[
         styles.base,
+        isLarge && styles.baseLarge,
         variant === 'secondary' ? styles.secondary : styles.outline,
         isDisabled && styles.disabled,
         style,
@@ -81,6 +90,7 @@ export function Button({
             style={[
               Typography.button,
               variant === 'secondary' ? styles.secondaryText : styles.outlineText,
+              isLarge && styles.textLarge,
             ]}
           >
             {title}
@@ -92,23 +102,40 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
+  shadowWrapper: {
+    borderRadius: Radius.lg,
+    ...Shadows.lg,
+  },
+  shadowWrapperLarge: {
+    borderRadius: Radius.xl,
+  },
+  touchable: {
+    borderRadius: Radius.lg,
+    overflow: 'hidden',
+  },
+  touchableLarge: {
+    borderRadius: Radius.xl,
+  },
   base: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
     paddingHorizontal: Spacing['2xl'],
     borderRadius: Radius.lg,
     gap: Spacing.sm,
-    minHeight: 52,
+    minHeight: 54,
   },
-  primary: {
-    // gradient handles background
-    ...Shadows.lg,
-    overflow: 'visible',
+  baseLarge: {
+    paddingVertical: Spacing.lg,
+    minHeight: 58,
+    borderRadius: Radius.xl,
   },
   primaryText: {
     color: Colors.textOnPrimary,
+  },
+  textLarge: {
+    fontSize: 17,
   },
   secondary: {
     backgroundColor: Colors.primary,
@@ -117,8 +144,8 @@ const styles = StyleSheet.create({
     color: Colors.textOnPrimary,
   },
   outline: {
-    backgroundColor: Colors.transparent,
-    borderWidth: 2,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
     borderColor: Colors.primary,
   },
   outlineText: {

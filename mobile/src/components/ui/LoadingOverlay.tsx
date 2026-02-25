@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { Colors, Typography, Spacing } from '../../theme';
+import { Colors, Typography, Spacing, Radius, Shadows } from '../../theme';
 
 interface LoadingOverlayProps {
   message?: string;
@@ -26,21 +26,23 @@ export function LoadingOverlay({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.overlay,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
   box: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: Radius.lg,
     padding: Spacing['3xl'],
     alignItems: 'center',
     gap: Spacing.lg,
-    minWidth: 180,
+    minWidth: 200,
+    ...Shadows.lg,
   },
   message: {
     ...Typography.body,
     color: Colors.textPrimary,
+    fontWeight: '500',
   },
 });

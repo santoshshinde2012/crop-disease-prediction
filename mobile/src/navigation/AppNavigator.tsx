@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -7,7 +8,7 @@ import { CameraScreen } from '../screens/CameraScreen';
 import { ResultScreen } from '../screens/ResultScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { DiseaseLibraryScreen } from '../screens/DiseaseLibraryScreen';
-import { Colors, Typography } from '../theme';
+import { Colors, Typography, Spacing } from '../theme';
 import type { RootStackParamList, TabParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,7 +31,7 @@ function MainTabs() {
           return (
             <Icon
               name={focused ? icons.active : icons.inactive}
-              size={size}
+              size={focused ? size + 2 : size}
               color={focused ? Colors.primary : Colors.textSecondary}
             />
           );
@@ -40,11 +41,19 @@ function MainTabs() {
         tabBarLabelStyle: {
           ...Typography.caption,
           fontSize: 11,
+          fontWeight: '500',
         },
         tabBarStyle: {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.borderLight,
-          paddingTop: 6,
+          borderTopWidth: 0.5,
+          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
         },
       })}
     >
@@ -77,6 +86,7 @@ export function AppNavigator() {
           headerTintColor: Colors.primaryDark,
           headerStyle: { backgroundColor: Colors.background },
           headerTitleStyle: { ...Typography.h3, color: Colors.textPrimary },
+          headerShadowVisible: false,
         }}
       />
     </Stack.Navigator>

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { Colors, Typography, Spacing } from '../../theme';
+import { Colors, Typography, Spacing, Radius } from '../../theme';
 import type { PredictionResult } from '../../types';
 
 interface DiagnosisCardProps {
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 200,
+    height: 220,
     resizeMode: 'cover',
   },
   content: {
@@ -59,7 +59,8 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
+    fontWeight: '600',
   },
   diseaseName: {
     ...Typography.h2,

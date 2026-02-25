@@ -135,6 +135,10 @@ streamlit run streamlit_app/app.py
 | **Model Performance** | Accuracy metrics, confusion matrix, training history, per-class performance |
 | **Disease Library** | Browse 15 diseases with crop filter tabs, symptoms, treatment |
 
+The Diagnosis page includes an **Online/Offline toggle**:
+- **Offline** (default): Uses the local PyTorch model via `DiseasePredictor`
+- **Online**: Sends images to the REST API (requires Step 4 API to be running)
+
 Stop: `Ctrl+C`
 
 ---
@@ -205,11 +209,15 @@ npx react-native run-android
 
 | Screen | What It Does |
 |--------|-------------|
-| **Home** | Hero with model stats, "Scan a Leaf" button |
-| **Camera** | Capture leaf photo or pick from gallery |
-| **Result** | Disease name, confidence %, severity, treatment, prevention |
-| **History** | Past scans saved locally (offline) |
-| **Library** | Browse 15 diseases with crop filter tabs |
+| **Home** | Gradient hero with stats (97.8% / 15 diseases / <1s), pill-shaped online/offline toggle, feature cards, large "Scan a Leaf" CTA |
+| **Camera** | Online/offline toggle (translucent on camera, card on simulator), dashed guide circle, large capture button, gallery picker, status indicator |
+| **Result** | Leaf thumbnail, disease name, severity badge, confidence %, treatment card, symptoms, prevention, animated top-5 bars, "Scan Another Leaf" CTA |
+| **History** | Past scans saved locally (offline) — card list with thumbnails, badges, confidence, timestamp |
+| **Library** | Browse 15 diseases with pill-shaped crop filter tabs, section headers with count badges |
+
+The app supports **Online/Offline mode** (toggle on Home and Camera screens):
+- **Offline** (default): On-device TFLite inference — no server required
+- **Online**: Sends images to the REST API (requires Step 4 API running at `localhost:8000`)
 
 ---
 

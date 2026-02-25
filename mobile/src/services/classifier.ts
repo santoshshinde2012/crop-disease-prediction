@@ -120,7 +120,7 @@ export async function predict(inputTensor: Float32Array): Promise<PredictionResu
     throw new Error('Model not loaded. Call loadModel() first.');
   }
 
-  const output = model.run([inputTensor]);
+  const output = await model.run([inputTensor]);
   const rawOutput = output[0];
 
   if (!rawOutput || rawOutput.length !== NUM_CLASSES) {
@@ -129,7 +129,7 @@ export async function predict(inputTensor: Float32Array): Promise<PredictionResu
     );
   }
 
-  const logits = Array.from(new Float32Array(rawOutput as ArrayBuffer));
+  const logits = Array.from(rawOutput as Float32Array);
 
   // Apply softmax to get probabilities
   const probabilities = softmax(logits);

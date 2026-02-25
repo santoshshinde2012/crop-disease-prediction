@@ -19,7 +19,7 @@ export function FeatureCard({
 }: FeatureCardProps) {
   return (
     <Card style={styles.card}>
-      <View style={[styles.iconCircle, { backgroundColor: color + '15' }]}>
+      <View style={[styles.iconCircle, { backgroundColor: color + '12' }]}>
         <Icon name={icon} size={24} color={color} />
       </View>
       <View style={styles.content}>
@@ -34,13 +34,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.md,
-    marginBottom: Spacing.lg,
+    gap: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -51,10 +51,11 @@ const styles = StyleSheet.create({
     ...Typography.h3,
     fontSize: 16,
     color: Colors.textPrimary,
-    marginBottom: 2,
+    marginBottom: 3,
   },
   description: {
     ...Typography.bodySmall,
     color: Colors.textSecondary,
+    lineHeight: 20,
   },
 });

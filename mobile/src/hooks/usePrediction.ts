@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
 import { useModel } from '../context/ModelContext';
+import { useInferenceMode } from '../context/InferenceModeContext';
 import { extractPixels } from '../services/imageProcessor';
+import { predictOnline } from '../services/apiClient';
 import { savePrediction } from '../services/storage';
 import type { PredictionResult } from '../types';
 
@@ -20,21 +22,20 @@ interface UsePredictionReturn {
 /**
  * Orchestrates the full prediction pipeline.
  *
- * Separation of concerns:
- *   - imageProcessor handles image I/O (resize + pixel extraction)
- *   - ModelContext handles ML inference (preprocess + predict)
- *   - storage handles persistence (save to AsyncStorage)
- *   - This hook manages UI state (loading, error, result)
+ * Supports two inference modes:
+ *   - offline: imageProcessor → TFLite on-device inference → save
+ *   - online:  send image to REST API → save
  */
 export function usePrediction(): UsePredictionReturn {
   const { runPrediction, isReady } = useModel();
+  const { mode, apiBaseUrl } = useInferenceMode();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const analyze = useCallback(
     async (imagePath: string): Promise<PredictionResult | null> => {
-      if (!isReady) {
+      if (mode === 'offline' && !isReady) {
         setError('Model is still loading. Please wait.');
         return null;
       }
@@ -43,12 +44,17 @@ export function usePrediction(): UsePredictionReturn {
       setError(null);
 
       try {
-        const rgbaPixels = await extractPixels(imagePath);
-        const prediction = await runPrediction(rgbaPixels);
+        let prediction: PredictionResult;
+
+        if (mode === 'online') {
+          prediction = await predictOnline(imagePath, apiBaseUrl);
+        } else {
+          const rgbaPixels = await extractPixels(imagePath);
+          prediction = await runPrediction(rgbaPixels);
+        }
+
         setResult(prediction);
-
         await savePrediction(prediction, imagePath);
-
         return prediction;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Prediction failed.';
@@ -58,7 +64,7 @@ export function usePrediction(): UsePredictionReturn {
         setLoading(false);
       }
     },
-    [runPrediction, isReady],
+    [mode, apiBaseUrl, runPrediction, isReady],
   );
 
   const reset = useCallback(() => {

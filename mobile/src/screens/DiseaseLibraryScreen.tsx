@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { DiseaseListItem } from '../components/library/DiseaseListItem';
 import diseaseData from '../../assets/data/disease_info.json';
-import { Colors, Typography, Spacing } from '../theme';
+import { Colors, Typography, Spacing, Radius } from '../theme';
 import type { CropFilter, Disease, DiseaseDatabase } from '../types';
 
 const diseases = diseaseData as DiseaseDatabase;
@@ -49,7 +49,7 @@ export function DiseaseLibraryScreen() {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + Spacing.md }]}>
+      <View style={[styles.header, { paddingTop: insets.top + Spacing.lg }]}>
         <Text style={styles.title}>Disease Library</Text>
         <Text style={styles.subtitle}>{totalCount} diseases</Text>
       </View>
@@ -61,6 +61,7 @@ export function DiseaseLibraryScreen() {
             key={f}
             style={[styles.filterTab, filter === f && styles.filterTabActive]}
             onPress={() => setFilter(f)}
+            activeOpacity={0.7}
           >
             <Text
               style={[
@@ -85,7 +86,9 @@ export function DiseaseLibraryScreen() {
           <View style={styles.sectionHeader}>
             <Icon name="leaf" size={18} color={Colors.primary} />
             <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Text style={styles.sectionCount}>{section.data.length}</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.sectionCount}>{section.data.length}</Text>
+            </View>
           </View>
         )}
         renderItem={({ item }) => (
@@ -128,12 +131,12 @@ const styles = StyleSheet.create({
   filterTab: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    borderRadius: 20,
+    borderRadius: Radius.full,
     backgroundColor: Colors.surfaceMuted,
   },
   filterTabActive: {
     backgroundColor: Colors.surfaceSubtle,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: Colors.primaryLight,
   },
   filterText: {
@@ -161,14 +164,15 @@ const styles = StyleSheet.create({
     color: Colors.primaryDark,
     flex: 1,
   },
+  countBadge: {
+    backgroundColor: Colors.surfaceMuted,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
   sectionCount: {
     ...Typography.caption,
     color: Colors.textSecondary,
-    backgroundColor: Colors.surfaceMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 10,
-    overflow: 'hidden',
   },
   empty: {
     paddingVertical: Spacing['4xl'],

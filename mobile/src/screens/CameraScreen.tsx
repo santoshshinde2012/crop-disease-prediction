@@ -23,10 +23,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { LoadingOverlay } from '../components/ui/LoadingOverlay';
 import { Button } from '../components/ui/Button';
+import { ModeToggle } from '../components/ui/ModeToggle';
 import { useModel } from '../context/ModelContext';
+import { useInferenceMode } from '../context/InferenceModeContext';
 import { usePrediction } from '../hooks/usePrediction';
 import { CONFIDENCE_THRESHOLD } from '../services/classifier';
-import { Colors, Typography, Spacing, Shadows } from '../theme';
+import { Colors, Typography, Spacing, Radius, Shadows } from '../theme';
 import type { RootStackParamList, PredictionResult } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -40,8 +42,10 @@ export function CameraScreen() {
   const device = useCameraDevice('back');
   const { hasPermission, requestPermission } = useCameraPermission();
   const { isReady } = useModel();
+  const { mode } = useInferenceMode();
   const { loading, analyze } = usePrediction();
   const insets = useSafeAreaInsets();
+  const canInfer = mode === 'online' || isReady;
 
   const navigateWithResult = useCallback(
     (result: PredictionResult | null, imagePath: string) => {
@@ -61,7 +65,7 @@ export function CameraScreen() {
   );
 
   const handleCapture = useCallback(async () => {
-    if (!camera.current || loading || !isReady) return;
+    if (!camera.current || loading || !canInfer) return;
 
     try {
       const photo = await camera.current.takePhoto();
@@ -72,7 +76,7 @@ export function CameraScreen() {
       const message = err instanceof Error ? err.message : 'Failed to analyze image.';
       Alert.alert('Error', message);
     }
-  }, [loading, isReady, analyze, navigateWithResult]);
+  }, [loading, canInfer, analyze, navigateWithResult]);
 
   const handleGalleryPick = useCallback(async () => {
     const response = await launchImageLibrary({
@@ -95,7 +99,7 @@ export function CameraScreen() {
   }, [analyze, navigateWithResult]);
 
   const handleUseDemoImage = useCallback(async () => {
-    if (loading || !isReady) return;
+    if (loading || !canInfer) return;
 
     try {
       const imageSource = Image.resolveAssetSource(demoLeafImage);
@@ -106,7 +110,7 @@ export function CameraScreen() {
       const message = err instanceof Error ? err.message : 'Failed to analyze demo image.';
       Alert.alert('Error', message);
     }
-  }, [loading, isReady, analyze, navigateWithResult]);
+  }, [loading, canInfer, analyze, navigateWithResult]);
 
   // Permission not granted
   if (!hasPermission) {
@@ -115,7 +119,7 @@ export function CameraScreen() {
         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
         <View style={styles.illustrationOuter}>
           <View style={styles.illustrationInner}>
-            <Icon name="camera-outline" size={36} color={Colors.primary} />
+            <Icon name="camera-outline" size={40} color={Colors.primary} />
           </View>
         </View>
         <Text style={styles.permissionTitle}>Camera Access Required</Text>
@@ -125,6 +129,7 @@ export function CameraScreen() {
         <View style={styles.permissionButtons}>
           <Button
             title="Grant Permission"
+            size="large"
             onPress={async () => {
               const granted = await requestPermission();
               if (!granted) Linking.openSettings();
@@ -135,6 +140,7 @@ export function CameraScreen() {
           <Button
             title="Browse Photo Library"
             variant="outline"
+            size="large"
             onPress={handleGalleryPick}
             icon={<Icon name="images-outline" size={20} color={Colors.primary} />}
             style={styles.fullWidthButton}
@@ -150,14 +156,17 @@ export function CameraScreen() {
       <View style={styles.noDeviceContainer}>
         <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
         <ScrollView
-          contentContainerStyle={[styles.noDeviceScroll, { paddingTop: insets.top + Spacing['3xl'], paddingBottom: insets.bottom + Spacing['3xl'] }]}
+          contentContainerStyle={[
+            styles.noDeviceScroll,
+            { paddingTop: insets.top + Spacing['3xl'], paddingBottom: insets.bottom + Spacing['5xl'] },
+          ]}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
           {/* Illustration */}
           <View style={styles.illustrationOuter}>
             <View style={styles.illustrationInner}>
-              <Icon name="leaf" size={36} color={Colors.primary} />
+              <Icon name="leaf" size={40} color={Colors.primary} />
             </View>
           </View>
 
@@ -168,32 +177,34 @@ export function CameraScreen() {
             bundled demo image to try the experience.
           </Text>
 
-          {/* Model status indicator */}
-          <View style={styles.modelStatusRow}>
-            <Icon
-              name={isReady ? 'checkmark-circle' : 'hourglass-outline'}
-              size={18}
-              color={isReady ? Colors.primaryLight : Colors.severityModerate}
-            />
-            <Text style={[styles.modelStatusText, { color: isReady ? Colors.primary : Colors.severityModerate }]}>
-              {isReady ? 'Model ready' : 'Loading model...'}
-            </Text>
+          {/* Toggle + Status Card */}
+          <View style={styles.statusCard}>
+            <ModeToggle />
+            <View style={styles.statusDivider} />
+            <View style={styles.modelStatusRow}>
+              <View style={[styles.statusDot, { backgroundColor: canInfer ? Colors.primaryLight : Colors.severityModerate }]} />
+              <Text style={[styles.modelStatusText, { color: canInfer ? Colors.primary : Colors.severityModerate }]}>
+                {mode === 'online' ? 'API mode — predictions via REST API' : isReady ? 'Model ready — on-device inference' : 'Loading model...'}
+              </Text>
+            </View>
           </View>
 
           {/* Buttons */}
           <View style={styles.noDeviceButtons}>
             <Button
               title="Browse Photo Library"
+              size="large"
               onPress={handleGalleryPick}
-              icon={<Icon name="images" size={20} color={Colors.textOnPrimary} />}
+              icon={<Icon name="images" size={22} color={Colors.textOnPrimary} />}
               style={styles.fullWidthButton}
             />
             <Button
               title="Use Demo Image"
               variant="outline"
+              size="large"
               onPress={handleUseDemoImage}
-              disabled={!isReady}
-              icon={<Icon name="leaf-outline" size={20} color={Colors.primary} />}
+              disabled={!canInfer}
+              icon={<Icon name="leaf-outline" size={22} color={Colors.primary} />}
               style={styles.fullWidthButton}
             />
           </View>
@@ -219,6 +230,7 @@ export function CameraScreen() {
       <View style={styles.overlay}>
         {/* Top bar */}
         <View style={[styles.topBar, { paddingTop: insets.top + Spacing.md }]}>
+          <ModeToggle variant="light" />
           <Text style={styles.instruction}>
             Position the leaf within the circle
           </Text>
@@ -230,16 +242,18 @@ export function CameraScreen() {
         {/* Bottom controls */}
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + Spacing.xl }]}>
           {/* Gallery button */}
-          <TouchableOpacity style={styles.sideButton} onPress={handleGalleryPick}>
-            <Icon name="images" size={28} color={Colors.textOnDark} />
+          <TouchableOpacity style={styles.sideButton} onPress={handleGalleryPick} activeOpacity={0.7}>
+            <View style={styles.sideButtonIcon}>
+              <Icon name="images" size={24} color={Colors.textOnDark} />
+            </View>
             <Text style={styles.sideButtonLabel}>Gallery</Text>
           </TouchableOpacity>
 
           {/* Capture button */}
           <TouchableOpacity
-            style={styles.captureButton}
+            style={[styles.captureButton, (!canInfer || loading) && styles.captureButtonDisabled]}
             onPress={handleCapture}
-            disabled={loading || !isReady}
+            disabled={loading || !canInfer}
             activeOpacity={0.7}
           >
             <View style={styles.captureInner} />
@@ -247,13 +261,15 @@ export function CameraScreen() {
 
           {/* Model status */}
           <View style={styles.sideButton}>
-            <Icon
-              name={isReady ? 'checkmark-circle' : 'hourglass'}
-              size={28}
-              color={isReady ? Colors.accent : Colors.severityModerate}
-            />
+            <View style={styles.sideButtonIcon}>
+              <Icon
+                name={canInfer ? 'checkmark-circle' : 'hourglass'}
+                size={24}
+                color={canInfer ? Colors.accent : Colors.severityModerate}
+              />
+            </View>
             <Text style={styles.sideButtonLabel}>
-              {isReady ? 'Ready' : 'Loading'}
+              {mode === 'online' ? 'API' : isReady ? 'Ready' : 'Loading'}
             </Text>
           </View>
         </View>
@@ -276,14 +292,15 @@ const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: Spacing['2xl'],
     alignItems: 'center',
+    gap: Spacing.sm,
   },
   instruction: {
-    ...Typography.body,
+    ...Typography.bodySmall,
     color: Colors.textOnDark,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
-    borderRadius: 20,
+    borderRadius: Radius.full,
     overflow: 'hidden',
   },
   guideCircle: {
@@ -297,47 +314,60 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    paddingHorizontal: Spacing['2xl'],
+    paddingHorizontal: Spacing.lg,
   },
   sideButton: {
     alignItems: 'center',
-    width: 60,
+    width: 70,
+    gap: 6,
+  },
+  sideButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sideButtonLabel: {
     ...Typography.caption,
     color: Colors.textOnDark,
-    marginTop: 4,
   },
   captureButton: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+  },
+  captureButtonDisabled: {
+    opacity: 0.4,
   },
   captureInner: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
     backgroundColor: Colors.textOnDark,
   },
   // Shared illustration style
   illustrationOuter: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: Colors.surfaceSubtle,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
   illustrationInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
@@ -349,11 +379,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: Colors.background,
-    paddingHorizontal: Spacing['2xl'],
+    paddingHorizontal: Spacing['3xl'],
     paddingBottom: Spacing['4xl'],
   },
   permissionTitle: {
-    ...Typography.h1,
+    ...Typography.h2,
     color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: Spacing.sm,
@@ -363,7 +393,8 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     marginBottom: Spacing['3xl'],
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    lineHeight: 24,
   },
   permissionButtons: {
     width: '100%',
@@ -376,12 +407,11 @@ const styles = StyleSheet.create({
   },
   noDeviceScroll: {
     flexGrow: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing['2xl'],
   },
   noDeviceTitle: {
-    ...Typography.h1,
+    ...Typography.h2,
     color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: Spacing.sm,
@@ -390,23 +420,44 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: Spacing.lg,
-    marginBottom: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing['2xl'],
+    lineHeight: 24,
+  },
+  statusCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginBottom: Spacing['3xl'],
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.borderLight,
+    ...Shadows.sm,
+  },
+  statusDivider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.border,
   },
   modelStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
-    marginBottom: Spacing['3xl'],
+    gap: Spacing.sm,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   modelStatusText: {
     ...Typography.bodySmall,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   noDeviceButtons: {
     width: '100%',
     gap: Spacing.md,
-    paddingBottom: Spacing.lg,
   },
   fullWidthButton: {
     width: '100%',

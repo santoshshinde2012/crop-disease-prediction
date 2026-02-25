@@ -2,6 +2,14 @@
 
 A deep learning pipeline to classify plant diseases from leaf images using the PlantVillage dataset. Built with **MobileNetV2 transfer learning** in PyTorch, achieving **97.8% validation accuracy** across 15 disease classes — optimized for mobile deployment in farmer-facing application.
 
+### System Overview
+
+<p align="center">
+  <img src="wiki/images/PlantVillage%20Dataset.png" alt="System Overview — PlantVillage → ML Pipeline → Streamlit, FastAPI, Mobile" />
+</p>
+
+> PlantVillage dataset trains a MobileNetV2 model. The PyTorch model serves Streamlit and FastAPI directly. An export script converts it to TFLite for the React Native mobile app.
+
 ---
 
 ## Table of Contents
@@ -13,16 +21,14 @@ A deep learning pipeline to classify plant diseases from leaf images using the P
 5. [Running the Streamlit App](#running-the-streamlit-app)
 6. [Running the REST API](#running-the-rest-api)
 7. [Mobile App (React Native)](#mobile-app-react-native)
-8. [End-to-End Testing](#end-to-end-testing)
-9. [Dataset](#dataset)
-10. [Approach](#approach)
-11. [Model Architecture](#model-architecture)
-12. [Training Strategy](#training-strategy)
-13. [Model Performance](#model-performance)
-14. [Visualizations](#visualizations)
-15. [Business Recommendation](#business-recommendation)
-16. [Tech Stack](#tech-stack)
-17. [Documentation](#documentation)
+8. [Dataset](#dataset)
+9. [Approach](#approach)
+10. [Model Architecture](#model-architecture)
+11. [Training Strategy](#training-strategy)
+12. [Model Performance](#model-performance)
+13. [Visualizations](#visualizations)
+14. [Business Recommendation](#business-recommendation)
+15. [Documentation](#documentation)
 
 ---
 
@@ -111,13 +117,20 @@ crop-prediction/
 │       ├── predict.py                     #     Diagnosis: image upload → results
 │       ├── dashboard.py                   #     Model performance metrics & plots
 │       └── disease_library.py             #     Browsable disease catalog
-├── mobile/                                # React Native offline mobile app
-│   ├── App.tsx                            #   Entry point: ModelProvider → Navigation
+├── mobile/                                # React Native mobile app (online + offline)
+│   ├── App.tsx                            #   Entry point: Providers → Navigation
 │   ├── assets/data/                       #   Bundled class names + disease info JSON
+│   ├── assets/model/                      #   Bundled TFLite model for offline inference
 │   ├── src/screens/                       #   Home, Camera, Result, History, Library
-│   ├── src/components/                    #   Reusable UI (Card, Badge, ConfidenceBar)
-│   ├── src/services/classifier.ts         #   TFLite model load + inference
-│   └── src/services/imageProcessor.ts     #   Image resize + pixel extraction
+│   ├── src/components/                    #   Reusable UI (Card, Button, Badge, ModeToggle)
+│   ├── src/context/                       #   React contexts
+│   │   ├── ModelContext.tsx               #     TFLite model lifecycle (load, run, isReady)
+│   │   └── InferenceModeContext.tsx       #     Online/offline mode with AsyncStorage persistence
+│   ├── src/hooks/usePrediction.ts         #   Orchestrates offline or online prediction pipeline
+│   ├── src/services/classifier.ts         #   TFLite model load + on-device inference
+│   ├── src/services/apiClient.ts          #   Online prediction via REST API (fetch + FormData)
+│   ├── src/services/imageProcessor.ts     #   Image resize + pixel extraction
+│   └── src/theme/                         #   Design tokens (colors, typography, spacing, shadows)
 ├── scripts/                               # Project-level utility scripts
 │   ├── export_model.py                    #   PyTorch → TFLite conversion for mobile
 │   └── sync_mobile_assets.py              #   Sync disease data to mobile assets
@@ -165,7 +178,7 @@ crop-prediction/
 pip install -r requirements.txt
 ```
 
-This installs: `torch`, `torchvision`, `matplotlib`, `seaborn`, `scikit-learn`, `pandas`, `streamlit`, `fastapi`, `uvicorn`, `jupyter`
+This installs: `torch`, `torchvision`, `matplotlib`, `seaborn`, `scikit-learn`, `pandas`, `streamlit`, `fastapi`, `uvicorn`, `python-multipart`, `requests`, `jupyter`
 
 ### Step 2: Configure Kaggle API
 
@@ -238,12 +251,21 @@ Open **http://localhost:8501** in your browser. The app has **3 pages**:
 | **Disease Library** | Browse all 15 disease classes with symptoms, treatment, and prevention — filterable by crop |
 
 **Features:**
+- **Online/Offline inference toggle** — switch between local model and REST API prediction
 - Custom green agricultural theme
 - Reusable UI components (metric cards, confidence bars, severity badges, disease cards)
 - Multi-page navigation with `st.navigation()` API
 - Model cached via `@st.cache_resource` for instant predictions
 
-> **Note**: The app requires a trained model (`checkpoints/best_model.pth`) and class names (`outputs/metrics/class_names.json`). Run the notebook first if these don't exist.
+> **Note**: The app requires a trained model (`checkpoints/best_model.pth`) and class names (`outputs/metrics/class_names.json`). Run the notebook first if these don't exist. For online mode, the REST API must be running (`uvicorn api.main:app`).
+
+### Inference Flow (All Consumers)
+
+<p align="center">
+  <img src="wiki/images/Inference%20Flow.png" alt="Inference Flow — Streamlit, REST API, and Mobile App with online/offline mode" />
+</p>
+
+> Streamlit and Mobile support **online/offline mode**. Offline uses local models (PyTorch / TFLite). Online delegates to the REST API. The arrows between groups show the online mode delegation path.
 
 ---
 
@@ -350,44 +372,19 @@ All errors return a consistent JSON envelope with `success`, `error_code`, and `
 | `NOT_FOUND` | 404 | Requested disease class does not exist |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
-### Architecture
-
-```
-api/
-├── main.py              # App entry point: lifespan, CORS, logging middleware, routers
-├── config.py            # Constants: MAX_FILE_SIZE_MB, ALLOWED_CONTENT_TYPES
-├── dependencies.py      # Dependency injection: get_predictor()
-├── exceptions.py        # Custom exceptions + unified error handlers
-├── schemas/             # Pydantic v2 response models
-│   ├── error.py         #   ErrorResponse (consistent error envelope)
-│   ├── health.py        #   HealthResponse
-│   ├── prediction.py    #   PredictionResponse, TopKPrediction
-│   └── disease.py       #   DiseaseDetailResponse, DiseaseListResponse
-└── routers/             # Endpoint modules
-    ├── health.py        #   GET  /api/v1/health
-    ├── prediction.py    #   POST /api/v1/predict
-    └── diseases.py      #   GET  /api/v1/diseases{/name}
-```
-
-### Key Features
-
-- **OpenAPI 3.1 documentation** auto-generated at `/docs` (Swagger) and `/redoc` (ReDoc)
-- **Pydantic v2 schemas** with typed response models, field validation, and OpenAPI examples
-- **Dependency injection** for ML model lifecycle management via FastAPI lifespan
-- **Structured logging** with request/response timing on every endpoint
-- **Unified error responses** with machine-readable `error_code` across all error handlers
-- **CORS middleware** for cross-origin requests (configurable in `main.py`)
-- **API versioning** under `/api/v1/` prefix for future-proof evolution
-- **Input validation** — file type, file size (10 MB limit), and image integrity checks
-- **Catch-all exception handler** for unexpected errors (logged + returns 500)
-
-> **Note**: The API requires a trained model. Run the notebook first if `checkpoints/best_model.pth` doesn't exist.
+> **Note**: The API requires a trained model. Run the notebook first if `checkpoints/best_model.pth` doesn't exist. See [Project Structure](#project-structure) for the full `api/` directory layout.
 
 ---
 
 ## Mobile App (React Native)
 
-An offline-first React Native app that runs disease classification entirely on-device using **TFLite** via `react-native-fast-tflite` (CoreML on iOS, GPU delegate on Android) — no server or internet required.
+A React Native app with **online/offline inference toggle** — runs disease classification on-device using **TFLite** via `react-native-fast-tflite` (CoreML on iOS, GPU delegate on Android) or sends images to the REST API for server-side prediction.
+
+#### Model Export Pipeline
+
+<p align="center">
+  <img src="wiki/images/Model%20Export%20Pipeline.png" alt="Export Pipeline — PyTorch → ONNX → TFLite → Verify → Copy to mobile" />
+</p>
 
 ### Quick Start
 
@@ -411,12 +408,16 @@ npx react-native run-android
 
 > See [`mobile/README.md`](mobile/README.md) for full setup guide, troubleshooting, and platform-specific instructions.
 
-### How It Works (Offline)
+### Online / Offline Mode
 
-```
-Camera → Resize 224×224 → ImageNet Normalize → TFLite Model → Softmax → Result + Treatment Info
-                           (mean/std in code)   (on-device)    (top-5)   (from bundled JSON)
-```
+The app supports two inference modes, switchable via a toggle on the Home and Camera screens:
+
+| Mode | How It Works | Requires |
+|------|-------------|----------|
+| **Offline** (default) | Camera → Resize 224×224 → ImageNet Normalize → TFLite on-device → Result | TFLite model bundled in app |
+| **Online** | Camera → Send image to REST API → Receive prediction → Result | API running at `localhost:8000` |
+
+The selected mode persists across app restarts. When switching to online mode, the app checks API health first — if unreachable, it shows an alert and stays on offline mode.
 
 The app bundles everything needed for offline operation:
 
@@ -430,60 +431,11 @@ The app bundles everything needed for offline operation:
 
 | Screen | Description |
 |--------|-------------|
-| **Home** | Gradient hero with model stats (97.8% accuracy, 15 diseases, <1s inference), feature cards, "Scan a Leaf" CTA |
-| **Camera** | Full-screen camera with dashed leaf guide circle, capture button, gallery picker |
-| **Result** | Diagnosis card with confidence %, severity badge, treatment (urgent flagged), symptoms, prevention, top-5 confidence bars |
-| **History** | Past predictions stored locally via AsyncStorage — works fully offline |
-| **Library** | All 15 diseases browsable with crop filter tabs (All/Corn/Potato/Tomato), expandable detail cards |
-
-### Tech Stack
-
-| Library | Purpose |
-|---------|---------|
-| `react-native-fast-tflite` | On-device TFLite inference (CoreML on iOS, GPU delegate on Android) |
-| `react-native-image-resizer` | Image resize to model input dimensions (224x224) |
-| `jpeg-js` | Pure-JS JPEG decoding for pixel extraction |
-| `react-native-vision-camera` | Camera capture with permissions handling |
-| `react-native-reanimated` | Smooth animations (confidence bars, card expand) |
-| `react-native-linear-gradient` | Gradient hero and buttons |
-| `react-native-vector-icons` | Ionicons throughout the UI |
-| `@react-navigation` | Bottom tabs + stack navigation |
-| `@react-native-async-storage` | Local prediction history |
-
-### Key Best Practices
-
-- **TypeScript strict mode** — All files typed, no `any` types
-- **Component-driven architecture** — Reusable UI primitives (`Card`, `Button`, `Badge`, `ConfidenceBar`) + feature components
-- **React Context** for model lifecycle — load TFLite once on mount, expose `runPrediction()` via `useModel()` hook
-- **Separation of concerns** — `services/classifier.ts` (inference), `services/imageProcessor.ts` (image I/O), `hooks/usePrediction.ts` (orchestration), `components/` (UI), `screens/` (composition), `theme/` (design tokens)
-- **Design system** — Consistent color palette, typography scale, spacing scale, shadow presets matching the web app
-- **Model output validation** — Runtime checks on TFLite output shape before processing
-- **Input validation** — Pixel data length check before preprocessing
-
----
-
-## End-to-End Testing (Mobile — Maestro)
-
-Maestro runs UI flows on an iOS simulator or Android emulator: launch app, navigate tabs, open Library and History.
-
-**Requirements:** [Maestro CLI](https://maestro.mobile.dev/getting-started/installation), built app, and TFLite model at `mobile/assets/model/crop_disease_classifier.tflite`.
-
-```bash
-# Install Maestro (macOS)
-curl -Ls "https://get.maestro.mobile.dev" | bash
-
-# From mobile/
-cd mobile
-maestro test .maestro/flows/
-```
-
-- **Android:** uses `appId: com.cropdiseaseapp` (default in `.maestro/config.yaml`).
-- **iOS:** override app id: `maestro test -e appId=org.reactjs.native.example.CropDiseaseApp .maestro/flows/`
-
-| Flow | What it does |
-|------|----------------|
-| `01-navigation.yaml` | Launch app → tap "Scan a Leaf" → Library tab → History tab, assert empty state |
-| `02-library-content.yaml` | Open Library, assert Tomato / Corn / Potato visible |
+| **Home** | Model stats (97.8% accuracy, 15 diseases, <1s inference), online/offline toggle, feature cards, "Scan a Leaf" CTA |
+| **Camera** | Full-screen camera with leaf guide circle, capture button, gallery picker; online/offline toggle overlay |
+| **Result** | Disease name, severity badge, confidence %, treatment recommendations, symptoms, prevention, animated top-5 confidence bars |
+| **History** | Past predictions stored locally — card list with thumbnail, disease, confidence, timestamp; swipe-to-delete |
+| **Library** | Browse all 15 diseases with crop filter tabs (All/Corn/Potato/Tomato), expandable detail cards |
 
 ---
 
@@ -536,6 +488,14 @@ Training a CNN from scratch on ~22K images risks overfitting. Transfer learning 
 
 MobileNetV2 uses **depthwise separable convolutions** — achieving near-ResNet accuracy at 1/10th the size. This is critical for on-device deployment in areas with limited connectivity.
 
+#### Model Selection for Mobile Deployment
+
+<p align="center">
+  <img src="wiki/images/Model%20Selection%20for%20Mobile%20Deployment.png" alt="Quadrant Chart — MobileNetV2 in Deploy for Mobile zone, ResNet50 in Accurate but Heavy zone" />
+</p>
+
+> MobileNetV2 sits in the **Deploy for Mobile** quadrant (small size + high accuracy), making it the clear choice for Syngenta's farmer app. ResNet50 is accurate but too heavy for on-device use. See [`wiki/architecture.md`](wiki/architecture.md#5-model-selection-for-mobile-deployment) for detailed comparison.
+
 ---
 
 ## Model Architecture
@@ -560,6 +520,10 @@ MobileNetV2 (pre-trained on ImageNet)
 ---
 
 ## Training Strategy
+
+<p align="center">
+  <img src="wiki/images/Training%20Pipeline.png" alt="Training Pipeline — Dataset → Preprocessing → Model → Two Phase Training → Output" />
+</p>
 
 ### Two-Phase Transfer Learning
 
@@ -633,18 +597,40 @@ MobileNetV2 (pre-trained on ImageNet)
 
 ## Visualizations
 
-All plots are saved to `outputs/plots/` during notebook execution:
+All plots are saved to `outputs/plots/` during notebook execution.
+
+### Class Distribution
+
+<p align="center">
+  <img src="outputs/plots/class_distribution.png" alt="Class Distribution — image count per class, color-coded by crop" />
+</p>
+
+### Training History
+
+<p align="center">
+  <img src="outputs/plots/training_history.png" alt="Training History — accuracy and loss curves across both training phases" />
+</p>
+
+### Confusion Matrix
+
+<p align="center">
+  <img src="outputs/plots/confusion_matrix.png" alt="Confusion Matrix — 15x15 heatmap of true vs predicted labels" />
+</p>
+
+### Per-Class Accuracy
+
+<p align="center">
+  <img src="outputs/plots/per_class_accuracy.png" alt="Per-Class Accuracy — bar chart with green >=90%, yellow >=80%, red <80%" />
+</p>
+
+### Additional Plots
 
 | Plot | Description |
 |------|-------------|
-| `class_distribution.png` | Bar chart showing image count per class, color-coded by crop |
 | `sample_images.png` | Grid of 4 sample images from 5 representative classes |
 | `augmentation_examples.png` | Original vs. 9 augmented versions of the same image |
-| `training_history.png` | Accuracy and loss curves across both training phases |
-| `confusion_matrix.png` | 15x15 heatmap of true vs. predicted labels |
 | `correct_predictions.png` | 5 highest-confidence correct predictions with images |
 | `incorrect_predictions.png` | 5 highest-confidence errors (most informative failures) |
-| `per_class_accuracy.png` | Bar chart with per-class accuracy (green >=90%, yellow >=80%, red <80%) |
 
 ---
 
@@ -665,24 +651,6 @@ For farmer-facing mobile application, I recommend deploying **MobileNetV2 with t
    - Integrate with camera pipeline for real-time field use
 
 5. **Scalability**: Easily extensible to all 38 PlantVillage classes and adaptable to proprietary field imagery through additional fine-tuning.
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Language | Python 3.11 |
-| Deep Learning | PyTorch 2.10, torchvision |
-| Model | MobileNetV2 (ImageNet pre-trained) |
-| ML Utilities | scikit-learn 1.6 |
-| Visualization | matplotlib, seaborn |
-| Data Processing | pandas, NumPy |
-| Demo App | Streamlit (multi-page with custom CSS) |
-| REST API | FastAPI + Uvicorn (OpenAPI docs, Pydantic v2) |
-| Mobile Inference | TFLite via react-native-fast-tflite (CoreML / GPU delegate) |
-| Notebook | Jupyter |
-| Hardware | Apple MPS (M-series GPU) / CUDA / CPU |
 
 ---
 

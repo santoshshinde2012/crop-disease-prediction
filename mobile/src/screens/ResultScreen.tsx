@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, View, Text, StyleSheet, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DiagnosisCard } from '../components/result/DiagnosisCard';
 import { TreatmentCard } from '../components/result/TreatmentCard';
@@ -15,6 +16,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
 
 export function ResultScreen({ route, navigation }: Props) {
   const { result, imagePath } = route.params;
+  const insets = useSafeAreaInsets();
   const isUrgent = result.treatment.toUpperCase().startsWith('URGENT');
 
   return (
@@ -22,7 +24,7 @@ export function ResultScreen({ route, navigation }: Props) {
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing['4xl'] }]}
       >
         {/* Main diagnosis */}
         <DiagnosisCard result={result} imagePath={imagePath} />
@@ -70,12 +72,13 @@ export function ResultScreen({ route, navigation }: Props) {
         </View>
 
         {/* Scan again button */}
-        <View style={styles.section}>
+        <View style={styles.ctaSection}>
           <Button
             title="Scan Another Leaf"
+            size="large"
             onPress={() => navigation.goBack()}
-            variant="outline"
-            icon={<Icon name="camera" size={20} color={Colors.primary} />}
+            icon={<Icon name="camera" size={22} color={Colors.textOnPrimary} />}
+            style={styles.fullWidth}
           />
         </View>
       </ScrollView>
@@ -90,11 +93,15 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
-    paddingBottom: Spacing['4xl'],
-    gap: 0,
   },
   section: {
     marginTop: Spacing.lg,
+  },
+  ctaSection: {
+    marginTop: Spacing['2xl'],
+  },
+  fullWidth: {
+    width: '100%',
   },
   topKHeader: {
     flexDirection: 'row',

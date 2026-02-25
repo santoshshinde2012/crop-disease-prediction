@@ -16,7 +16,7 @@ export function HeroSection() {
       style={[styles.container, { paddingTop: insets.top + Spacing['2xl'] }]}
     >
       <View style={styles.iconContainer}>
-        <Icon name="leaf" size={48} color={Colors.accent} />
+        <Icon name="leaf" size={44} color={Colors.accent} />
       </View>
       <Text style={styles.title}>Crop Disease{'\n'}Classifier</Text>
       <Text style={styles.subtitle}>
@@ -46,13 +46,13 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing['2xl'],
     paddingBottom: Spacing['3xl'],
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -68,14 +68,15 @@ const styles = StyleSheet.create({
   subtitle: {
     ...Typography.body,
     color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 24,
     marginBottom: Spacing['2xl'],
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: 12,
-    paddingVertical: Spacing.md,
+    borderRadius: Spacing.md,
+    paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.lg,
   },
   stat: {
@@ -86,15 +87,16 @@ const styles = StyleSheet.create({
     ...Typography.h3,
     color: Colors.textOnDark,
     fontWeight: '700',
+    fontSize: 20,
   },
   statLabel: {
     ...Typography.caption,
     color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 2,
+    marginTop: 4,
   },
   divider: {
     width: 1,
-    height: 30,
+    height: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
 });
