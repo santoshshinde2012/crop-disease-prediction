@@ -105,7 +105,10 @@ uvicorn api.main:app --reload --port 8000
 
 Verify the model loaded:
 
+
+
 ```bash
+curl https://9591-103-186-246-0.ngrok-free.app/api/v1/health
 curl http://localhost:8000/api/v1/health
 ```
 
@@ -129,7 +132,7 @@ In a **separate terminal**:
 ngrok http 8000
 ```
 
-Copy the HTTPS forwarding URL (e.g., `https://abc123.ngrok-free.app`).
+Copy the HTTPS forwarding URL (e.g., ` https://8c4d-103-186-246-0.ngrok-free.app`).
 
 ---
 
@@ -139,7 +142,7 @@ Copy the HTTPS forwarding URL (e.g., `https://abc123.ngrok-free.app`).
 2. Set **"When a message comes in"** to:
 
 ```
-https://<your-ngrok-url>/api/v1/whatsapp/webhook
+ https://9591-103-186-246-0.ngrok-free.app/api/v1/whatsapp/webhook
 ```
 
 3. Set HTTP method to **POST**

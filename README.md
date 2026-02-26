@@ -20,15 +20,17 @@ A deep learning pipeline to classify plant diseases from leaf images using the P
 4. [Running the Notebook](#running-the-notebook)
 5. [Running the Streamlit App](#running-the-streamlit-app)
 6. [Running the REST API](#running-the-rest-api)
-7. [Mobile App (React Native)](#mobile-app-react-native)
-8. [Dataset](#dataset)
-9. [Approach](#approach)
-10. [Model Architecture](#model-architecture)
-11. [Training Strategy](#training-strategy)
-12. [Model Performance](#model-performance)
-13. [Visualizations](#visualizations)
-14. [Business Recommendation](#business-recommendation)
-15. [Documentation](#documentation)
+7. [Docker Deployment](#docker-deployment)
+8. [WhatsApp Integration](#whatsapp-integration)
+9. [Mobile App (React Native)](#mobile-app-react-native)
+10. [Dataset](#dataset)
+11. [Approach](#approach)
+12. [Model Architecture](#model-architecture)
+13. [Training Strategy](#training-strategy)
+14. [Model Performance](#model-performance)
+15. [Visualizations](#visualizations)
+16. [Business Recommendation](#business-recommendation)
+17. [Documentation](#documentation)
 
 ---
 
@@ -55,10 +57,14 @@ cd notebooks && jupyter notebook crop_disease_classification.ipynb
 # 6. Launch the Streamlit demo app (bonus)
 cd .. && streamlit run streamlit_app/app.py
 
-# 7. Launch the REST API
+# 7. Launch the REST API (from project root)
 uvicorn api.main:app --reload
 
-# 8. Run the mobile app (React Native)
+# 8. Launch via Docker (alternative to step 7)
+cp .env.example .env   # edit with your config
+docker compose up --build
+
+# 9. Run the mobile app (React Native)
 pip install torch torchvision onnx==1.16.2 onnx2tf tensorflow && python scripts/export_model.py
 cd mobile && npm install && cd ios && pod install && cd .. && npx react-native run-ios
 ```
@@ -94,27 +100,32 @@ crop-prediction/
 │   │   ├── training_plots.py              #   Training history curves
 │   │   └── eval_plots.py                  #   Confusion matrix, predictions, per-class accuracy
 │   └── inference/                         # SRP: Inference for deployment
-│       └── predictor.py                   #   DiseasePredictor class + disease info
+│       ├── predictor.py                   #   DiseasePredictor class (PyTorch)
+│       └── tflite_predictor.py            #   TFLitePredictor class (lightweight runtime)
 ├── api/                                   # FastAPI REST API
-│   ├── main.py                            #   App entry point, lifespan, CORS, routers
-│   ├── config.py                          #   API constants (max file size, allowed types)
-│   ├── dependencies.py                    #   Dependency injection (get_predictor)
+│   ├── main.py                            #   App entry, lifespan, CORS, middleware, routers
+│   ├── config.py                          #   API config (dotenv, CORS, rate limits, Twilio)
+│   ├── dependencies.py                    #   Dependency injection (predictor, Twilio validation)
 │   ├── exceptions.py                      #   Custom exceptions + handlers
-│   ├── schemas/                           #   Pydantic response models
+│   ├── schemas/                           #   Pydantic v2 response models
 │   │   ├── error.py                       #     ErrorResponse (unified error envelope)
 │   │   ├── health.py                      #     HealthResponse
 │   │   ├── prediction.py                  #     PredictionResponse, TopKPrediction
-│   │   └── disease.py                     #     DiseaseDetailResponse, DiseaseListResponse
-│   └── routers/                           #   API endpoint modules
-│       ├── health.py                      #     GET  /api/v1/health
-│       ├── prediction.py                  #     POST /api/v1/predict
-│       └── diseases.py                    #     GET  /api/v1/diseases
+│   │   ├── disease.py                     #     DiseaseDetailResponse, DiseaseListResponse
+│   │   └── whatsapp.py                    #     TwilioWebhookData, message templates
+│   ├── routers/                           #   API endpoint modules
+│   │   ├── health.py                      #     GET  /health/live, /health
+│   │   ├── prediction.py                  #     POST /predict (async, rate-limited)
+│   │   ├── diseases.py                    #     GET  /diseases
+│   │   └── whatsapp.py                    #     POST /whatsapp/webhook (Twilio)
+│   └── services/
+│       └── whatsapp_service.py            #   WhatsApp: image download, response formatting
 ├── streamlit_app/                         # Streamlit demo app (Part 4 Bonus)
 │   ├── app.py                             #   Entry point — multi-page navigation
-│   ├── styles.py                          #   Custom CSS + green color palette
-│   ├── components.py                      #   Reusable UI: cards, bars, badges
-│   └── pages/                             #   Page modules
-│       ├── predict.py                     #     Diagnosis: image upload → results
+│   ├── styles.py                          #   Custom CSS design system
+│   ├── components.py                      #   Reusable UI: cards, bars, badges, chips
+│   └── views/                             #   Page modules
+│       ├── predict.py                     #     Diagnosis: 3 inference modes, multi-compare
 │       ├── dashboard.py                   #     Model performance metrics & plots
 │       └── disease_library.py             #     Browsable disease catalog
 ├── mobile/                                # React Native mobile app (online + offline)
@@ -148,7 +159,10 @@ crop-prediction/
 │   └── metrics/                           # class_names.json, results.json, summary CSV
 ├── notebooks/
 │   └── crop_disease_classification.ipynb  # Primary deliverable — full end-to-end pipeline
+├── Dockerfile                             # Multi-stage production Docker build
+├── docker-compose.yml                     # One-command Docker deployment
 ├── requirements.txt                       # Python dependencies
+├── .env.example                           # Environment variable template
 ├── .gitignore
 ├── assignment.pdf                         # Original assignment brief
 └── README.md
@@ -159,7 +173,7 @@ crop-prediction/
 | Principle | Implementation |
 |-----------|---------------|
 | **Single Responsibility** | Each module has one job: `transforms.py` (transforms only), `trainer.py` (training only), `components.py` (UI components only) |
-| **Open/Closed** | New pages can be added to `streamlit_app/pages/`, new API routes to `api/routers/` without modifying existing code |
+| **Open/Closed** | New views can be added to `streamlit_app/views/`, new API routes to `api/routers/` without modifying existing code |
 | **Dependency Inversion** | Both Streamlit and FastAPI depend on `DiseasePredictor` abstraction, not raw model loading; shared disease data lives in `src/` |
 
 ---
@@ -178,7 +192,7 @@ crop-prediction/
 pip install -r requirements.txt
 ```
 
-This installs: `torch`, `torchvision`, `matplotlib`, `seaborn`, `scikit-learn`, `pandas`, `streamlit`, `fastapi`, `uvicorn`, `python-multipart`, `requests`, `jupyter`
+This installs: `torch`, `torchvision`, `matplotlib`, `seaborn`, `scikit-learn`, `pandas`, `streamlit`, `fastapi`, `uvicorn`, `gunicorn`, `python-multipart`, `python-dotenv`, `requests`, `Pillow`, `tflite-runtime`, `twilio`, `httpx`, `jupyter`
 
 ### Step 2: Configure Kaggle API
 
@@ -250,14 +264,27 @@ Open **http://localhost:8501** in your browser. The app has **3 pages**:
 | **Model Performance** | Dashboard with accuracy metrics, confusion matrix, training history, and per-class performance |
 | **Disease Library** | Browse all 15 disease classes with symptoms, treatment, and prevention — filterable by crop |
 
-**Features:**
-- **Online/Offline inference toggle** — switch between local model and REST API prediction
-- Custom green agricultural theme
-- Reusable UI components (metric cards, confidence bars, severity badges, disease cards)
-- Multi-page navigation with `st.navigation()` API
-- Model cached via `@st.cache_resource` for instant predictions
+### Three Inference Modes
 
-> **Note**: The app requires a trained model (`checkpoints/best_model.pth`) and class names (`outputs/metrics/class_names.json`). Run the notebook first if these don't exist. For online mode, the REST API must be running (`uvicorn api.main:app`).
+The Diagnosis page supports **three inference modes** that can be selected independently via compact chip toggles — enable multiple modes simultaneously to compare results side-by-side:
+
+| Mode | Engine | Use Case |
+|------|--------|----------|
+| **Local Model** | Full PyTorch MobileNetV2 | Highest accuracy, GPU-accelerated |
+| **TFLite** | TensorFlow Lite runtime | Lightweight, minimal dependencies |
+| **Online API** | REST API call | Delegates to the FastAPI server |
+
+When multiple modes are selected, results are shown in parallel columns with per-mode inference time, confidence scores, and top-5 predictions for easy comparison.
+
+**Features:**
+- **Multi-mode comparison** — run up to 3 inference engines simultaneously and compare results
+- **API health indicator** — real-time connection status pill when Online mode is selected
+- Custom CSS design system with green agricultural theme
+- Reusable UI components (metric cards, confidence bars, severity badges, disease cards, mode chips)
+- Multi-page navigation with `st.navigation()` API
+- Models cached via `@st.cache_resource` for instant predictions
+
+> **Note**: The app requires a trained model (`checkpoints/best_model.pth`) and class names (`outputs/metrics/class_names.json`). Run the notebook first if these don't exist. TFLite mode requires `exports/crop_disease_classifier.tflite`. For Online mode, the REST API must be running (`uvicorn api.main:app`).
 
 ### Inference Flow (All Consumers)
 
@@ -265,17 +292,26 @@ Open **http://localhost:8501** in your browser. The app has **3 pages**:
   <img src="wiki/images/Inference%20Flow.png" alt="Inference Flow — Streamlit, REST API, and Mobile App with online/offline mode" />
 </p>
 
-> Streamlit and Mobile support **online/offline mode**. Offline uses local models (PyTorch / TFLite). Online delegates to the REST API. The arrows between groups show the online mode delegation path.
+> Streamlit and Mobile support **multiple inference modes**. Offline uses local models (PyTorch / TFLite). Online delegates to the REST API. The arrows between groups show the online mode delegation path.
 
 ---
 
 ## Running the REST API
 
-A production-ready FastAPI application with OpenAPI documentation for programmatic access:
+A production-ready FastAPI application with OpenAPI documentation, request tracing, and rate limiting:
 
 ```bash
+# Development
 uvicorn api.main:app --reload
+
+# Production
+gunicorn api.main:app -k uvicorn.workers.UvicornWorker --workers 2
+
+# Docker (see Docker Deployment section)
+docker compose up --build
 ```
+
+> **Important**: Always run from the **project root** directory, not from inside `api/`.
 
 | URL | Description |
 |-----|-------------|
@@ -289,10 +325,21 @@ All endpoints are versioned under `/api/v1/`.
 
 | Method | Endpoint | Description | Status Codes |
 |--------|----------|-------------|--------------|
-| `GET`  | `/api/v1/health` | Health check with model status and version | `200`, `503` |
-| `POST` | `/api/v1/predict` | Upload leaf image for disease prediction | `200`, `400`, `413`, `422`, `503` |
+| `GET`  | `/api/v1/health` | Readiness check with model status and version | `200`, `503` |
+| `GET`  | `/api/v1/health/live` | Liveness probe (for container orchestrators) | `200` |
+| `POST` | `/api/v1/predict` | Upload leaf image for disease prediction | `200`, `400`, `413`, `422`, `429`, `503` |
 | `GET`  | `/api/v1/diseases` | List all 15 disease classes (optional `?crop=` filter) | `200` |
 | `GET`  | `/api/v1/diseases/{disease_name}` | Get detailed info for a specific disease | `200`, `404` |
+| `POST` | `/api/v1/whatsapp/webhook` | Twilio WhatsApp webhook for crop diagnosis | `200` |
+
+### Production Features
+
+- **Request ID tracing** — every request/response includes an `X-Request-ID` header (auto-generated or pass your own)
+- **Per-IP rate limiting** — prediction endpoint limited to 30 req/min (configurable via `PREDICT_RATE_LIMIT_PER_MINUTE`)
+- **Async file handling** — prediction endpoint uses `await file.read()` for non-blocking I/O
+- **Configurable CORS** — origins set via `CORS_ORIGINS` environment variable
+- **Structured logging** — request method, path, status code, latency, and request ID on every request
+- **Environment config** — all settings loaded from `.env` via `python-dotenv`
 
 ### Example: Predict Disease
 
@@ -368,11 +415,132 @@ All errors return a consistent JSON envelope with `success`, `error_code`, and `
 | `INVALID_IMAGE` | 400 | Uploaded file is not a valid JPEG/PNG image |
 | `FILE_TOO_LARGE` | 413 | File exceeds 10 MB limit |
 | `UNSUPPORTED_TYPE` | 422 | Content type is not `image/jpeg` or `image/png` |
+| `RATE_LIMITED` | 429 | Too many prediction requests from same IP (default: 30/min) |
 | `SERVICE_UNAVAILABLE` | 503 | Model not loaded (startup in progress or failed) |
 | `NOT_FOUND` | 404 | Requested disease class does not exist |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 > **Note**: The API requires a trained model. Run the notebook first if `checkpoints/best_model.pth` doesn't exist. See [Project Structure](#project-structure) for the full `api/` directory layout.
+
+---
+
+## Docker Deployment
+
+The API includes a production-ready multi-stage Docker setup:
+
+```bash
+# 1. Create .env from template
+cp .env.example .env
+# Edit .env with your settings (CORS origins, rate limits, Twilio credentials)
+
+# 2. Build and run
+docker compose up --build
+```
+
+The API will be available at `http://localhost:8000`.
+
+### Dockerfile
+
+- **Multi-stage build** — separate builder and runtime stages for smaller images
+- **Non-root user** — runs as `appuser` for security
+- **Health check** — built-in `HEALTHCHECK` against `/api/v1/health/live`
+- **Production server** — gunicorn with uvicorn workers (2 workers by default)
+
+### docker-compose.yml
+
+- Loads environment from `.env` file
+- Read-only volume mounts for model weights (`checkpoints/`, `exports/`, `outputs/metrics/`)
+- 2 GB memory limit
+- Auto-restart (`unless-stopped`)
+
+### Environment Variables
+
+See `.env.example` for the full template:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CORS_ORIGINS` | `*` | Comma-separated allowed origins |
+| `PREDICT_RATE_LIMIT_PER_MINUTE` | `30` | Max predictions per IP per minute |
+| `TWILIO_ACCOUNT_SID` | — | Twilio account SID (for WhatsApp) |
+| `TWILIO_AUTH_TOKEN` | — | Twilio auth token |
+| `TWILIO_WHATSAPP_NUMBER` | — | Twilio WhatsApp sender number |
+| `WHATSAPP_LOW_CONFIDENCE_THRESHOLD` | `0.60` | Below this, ask user for a clearer photo |
+| `WHATSAPP_RATE_LIMIT_PER_MINUTE` | `10` | Max WhatsApp requests per phone number |
+| `WHATSAPP_ENABLE_SIGNATURE_VALIDATION` | `true` | Set `false` for local dev with ngrok |
+
+---
+
+## WhatsApp Integration
+
+Farmers can send leaf photos via WhatsApp to get instant disease diagnosis — no app installation required. Built with the **Twilio WhatsApp API**.
+
+### Demo
+
+#### Welcome & High-Confidence Diagnosis
+
+<p align="center">
+  <img src="wiki/whatsapp/Demo1.png" alt="WhatsApp Demo — Welcome message, leaf photo upload, and Tomato Bacterial Spot diagnosis (100% confidence) with treatment and prevention" width="500" />
+</p>
+
+> Farmer joins the Twilio Sandbox, receives a welcome greeting, sends a leaf photo, and gets a full diagnosis: disease name, confidence, severity, treatment, and prevention tips.
+
+#### Low-Confidence Result
+
+<p align="center">
+  <img src="wiki/whatsapp/Demo2.png" alt="WhatsApp Demo — Low confidence result (53.7%) with tips for a better photo" width="500" />
+</p>
+
+> When confidence is below 60%, the bot flags the result as uncertain and provides tips for taking a better photo (good lighting, single leaf, avoid blur).
+
+#### Disease Diagnosis with Prevention
+
+<p align="center">
+  <img src="wiki/whatsapp/Demo3.png" alt="WhatsApp Demo — Tomato Leaf Mold diagnosis (99.6% confidence) with treatment and prevention steps" width="500" />
+</p>
+
+> High-confidence diagnosis of Tomato: Leaf Mold (99.6%) with actionable treatment and prevention steps.
+
+### How It Works
+
+1. Farmer sends a photo of a diseased leaf to the WhatsApp number
+2. Twilio forwards the message to the `/api/v1/whatsapp/webhook` endpoint
+3. The API downloads the image, runs inference, and returns a formatted diagnosis
+4. Farmer receives disease name, severity, confidence, treatment, and prevention tips
+
+### Supported Commands
+
+| Message | Response |
+|---------|----------|
+| **Photo of a leaf** | Disease diagnosis with treatment recommendations |
+| `hi` / `hello` / `hey` | Welcome message with instructions |
+| `help` / `?` | Available commands and tips for best results |
+| `crops` / `diseases` | List of supported crops and disease classes |
+
+### Setup
+
+1. Create a [Twilio account](https://console.twilio.com/) and set up a WhatsApp Sandbox
+2. Copy `.env.example` to `.env` and fill in your Twilio credentials:
+   ```
+   TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   TWILIO_AUTH_TOKEN=your_auth_token_here
+   TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+   ```
+3. Expose your local API via ngrok (for development):
+   ```bash
+   ngrok http 8000
+   ```
+4. Set the ngrok URL as the webhook in Twilio Console:
+   - Go to **Messaging** > **Try it out** > **Send a WhatsApp message** > **Sandbox settings**
+   - In the **"When a message comes in"** field, enter: `https://your-ngrok-url/api/v1/whatsapp/webhook`
+   - Set Method to **POST** and click **Save**
+5. Set `WHATSAPP_ENABLE_SIGNATURE_VALIDATION=false` in `.env` when using ngrok
+
+### Safety Features
+
+- **Per-phone rate limiting** — 10 requests per minute per phone number (configurable)
+- **Low-confidence threshold** — if confidence < 60%, asks the farmer to send a clearer photo
+- **Twilio signature validation** — verifies webhook authenticity in production
+- **EXIF transpose** — handles phone-taken photo orientation automatically
 
 ---
 
