@@ -271,81 +271,22 @@ CUSTOM_CSS = """
         line-height: 1.4;
     }
 
-    /* ── Mode Selector (compact inline) ── */
-    .mode-selector-row {
-        display: flex;
-        gap: 0.6rem;
-        margin: 0.5rem 0 0.2rem;
-    }
-    .mode-chip {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+    /* ── Checkbox as toggle cards ── */
+    [data-testid="stCheckbox"] {
         background: #ffffff;
         border: 1.5px solid #e2e8f0;
         border-radius: 12px;
-        padding: 0.6rem 1rem;
+        padding: 0.65rem 0.85rem !important;
         transition: all 0.2s ease;
-        flex: 1;
-        min-width: 0;
     }
-    .mode-chip:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    [data-testid="stCheckbox"]:hover {
+        border-color: #16a34a;
+        box-shadow: 0 2px 8px rgba(22,163,74,0.08);
     }
-    .mode-chip.active {
+    [data-testid="stCheckbox"]:has(input:checked) {
         border-color: #16a34a;
         background: #f0fdf4;
         box-shadow: 0 2px 8px rgba(22,163,74,0.1);
-    }
-    .mode-chip .chip-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-    .mode-chip .chip-info {
-        min-width: 0;
-    }
-    .mode-chip .chip-title {
-        font-weight: 700;
-        font-size: 0.85rem;
-        color: #0f172a;
-        line-height: 1.3;
-    }
-    .mode-chip .chip-desc {
-        font-size: 0.7rem;
-        color: #94a3b8;
-        line-height: 1.3;
-    }
-    .mode-chip .chip-tag {
-        display: inline-block;
-        padding: 0.1rem 0.45rem;
-        border-radius: 100px;
-        font-size: 0.62rem;
-        font-weight: 600;
-        margin-top: 0.2rem;
-    }
-    .chip-tag-pytorch { background: #eff6ff; color: #2563eb; }
-    .chip-tag-tflite { background: #fef3c7; color: #d97706; }
-    .chip-tag-api { background: #f3e8ff; color: #7c3aed; }
-    .mode-chip .chip-check {
-        margin-left: auto;
-        flex-shrink: 0;
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
-        border: 2px solid #d1d5db;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        transition: all 0.2s ease;
-    }
-    .mode-chip.active .chip-check {
-        background: #16a34a;
-        border-color: #16a34a;
-        color: #ffffff;
     }
 
     /* Legacy mode-tag (used in result headers) */
@@ -360,41 +301,237 @@ CUSTOM_CSS = """
         font-weight: 600;
     }
 
-    /* ── Result Header ── */
-    .result-header {
+    /* ── Result Card (redesigned) ── */
+    .result-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 14px;
+        border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: all 0.25s ease;
     }
-    .result-header h2 {
+    .result-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        border-color: #bbf7d0;
+    }
+    .result-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+    .result-card-mode {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .mode-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .result-card-time {
+        color: #94a3b8;
+        font-size: 0.72rem;
+        font-weight: 500;
+        background: #f8fafc;
+        padding: 0.2rem 0.6rem;
+        border-radius: 100px;
+    }
+    .result-card-disease {
         color: #0f172a;
-        margin: 0;
+        margin: 0 0 0.5rem 0;
         font-weight: 800;
-        font-size: 1.15rem;
-    }
-    .result-confidence {
-        font-size: 2.2rem;
-        font-weight: 800;
-        color: #16a34a;
+        font-size: 1.2rem;
         letter-spacing: -0.02em;
     }
-
-    /* ── Treatment section ── */
-    .treatment-section {
-        background: linear-gradient(135deg, #f0fdf4, #ffffff);
-        border: 1px solid #bbf7d0;
-        border-radius: 14px;
-        padding: 1.5rem;
+    .result-card-meta {
+        margin: 0.4rem 0;
+    }
+    .result-card-confidence {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #16a34a;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
         margin-top: 0.5rem;
     }
-    .treatment-section h3 {
-        color: #15803d;
+    .result-card-label {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        margin: 0.15rem 0 0 0;
+        font-weight: 500;
+    }
+
+    /* ── Model Comparison Card ── */
+    .compare-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        margin-top: 0.5rem;
+    }
+    .compare-title {
+        font-size: 0.72rem;
         font-weight: 700;
-        margin-top: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+        margin-bottom: 0.6rem;
+    }
+    .compare-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.45rem 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .compare-row:last-child { border-bottom: none; }
+    .compare-mode {
+        font-weight: 600;
+        font-size: 0.82rem;
+        color: #334155;
+        flex: 1;
+    }
+    .compare-conf {
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #16a34a;
+    }
+    .compare-time {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        min-width: 42px;
+        text-align: right;
+    }
+    .compare-error {
+        font-size: 0.78rem;
+        color: #dc2626;
+        font-weight: 600;
+    }
+
+    /* ── Chart Container ── */
+    .chart-container-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .chart-title {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+        margin: 0 0 0.25rem 0;
+        text-align: center;
+    }
+    .chart-legend {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.5rem 0.25rem 0;
+    }
+    .chart-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.78rem;
+    }
+    .chart-legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+    .chart-legend-label {
+        color: #475569;
+        flex: 1;
+        font-weight: 500;
+    }
+    .chart-legend-value {
+        color: #16a34a;
+        font-weight: 700;
+        font-size: 0.78rem;
+    }
+
+    /* ── Treatment Columns ── */
+    .treatment-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .treatment-header-row h3 {
+        margin: 0;
+        font-weight: 700;
+        color: #0f172a;
         font-size: 1.1rem;
+    }
+    .treatment-col-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1.5rem;
+        height: 100%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        transition: all 0.25s ease;
+    }
+    .treatment-col-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        transform: translateY(-2px);
+    }
+    .treatment-col-highlight {
+        background: linear-gradient(135deg, #f0fdf4, #ffffff);
+        border-color: #bbf7d0;
+    }
+    .treatment-col-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .treatment-col-icon-wrap {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .symptoms-icon { background: #fff7ed; }
+    .treatment-icon { background: #f0fdf4; }
+    .prevention-icon { background: #eff6ff; }
+    .treatment-col-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #64748b;
+    }
+    .treatment-col-list {
+        padding-left: 1.1rem;
+        margin: 0;
+        color: #475569;
+    }
+    .treatment-col-list li {
+        margin-bottom: 0.5rem;
+        line-height: 1.55;
+        font-size: 0.85rem;
+    }
+    .treatment-col-text {
+        color: #475569;
+        font-size: 0.85rem;
+        line-height: 1.65;
+        margin: 0;
     }
 
     /* ── Status indicators ── */
@@ -548,12 +685,9 @@ CUSTOM_CSS = """
         font-size: 0.88rem;
     }
 
-    /* ── Checkbox styling ── */
-    [data-testid="stCheckbox"] {
-        padding-bottom: 0 !important;
-    }
+    /* ── Checkbox label styling ── */
     [data-testid="stCheckbox"] label {
-        gap: 0.35rem !important;
+        gap: 0.4rem !important;
     }
     [data-testid="stCheckbox"] label p {
         font-weight: 600;
