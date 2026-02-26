@@ -158,7 +158,7 @@ export function CameraScreen() {
         <ScrollView
           contentContainerStyle={[
             styles.noDeviceScroll,
-            { paddingTop: insets.top + Spacing['3xl'], paddingBottom: insets.bottom + Spacing['5xl'] },
+            { paddingTop: insets.top + Spacing['3xl'], paddingBottom: Spacing['5xl'] },
           ]}
           showsVerticalScrollIndicator={false}
           bounces={false}

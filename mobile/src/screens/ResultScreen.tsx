@@ -18,16 +18,35 @@ export function ResultScreen({ route, navigation }: Props) {
   const { result, imagePath } = route.params;
   const insets = useSafeAreaInsets();
   const isUrgent = result.treatment.toUpperCase().startsWith('URGENT');
+  const topPredictions = result.topK.slice(0, 5);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing['4xl'] }]}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Main diagnosis */}
+        {/* Diagnosis hero — image, disease name, stats */}
         <DiagnosisCard result={result} imagePath={imagePath} />
+
+        {/* Top predictions — shown first for quick comparison */}
+        <View style={styles.section}>
+          <Card>
+            <View style={styles.sectionHeader}>
+              <Icon name="bar-chart" size={20} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>Top Predictions</Text>
+            </View>
+            {topPredictions.map((item, index) => (
+              <ConfidenceBar
+                key={item.className}
+                label={item.className}
+                confidence={item.confidence}
+                isTop={index === 0}
+              />
+            ))}
+          </Card>
+        </View>
 
         {/* Treatment */}
         <View style={styles.section}>
@@ -52,36 +71,18 @@ export function ResultScreen({ route, navigation }: Props) {
             <PreventionList title="Prevention" items={result.prevention} />
           </View>
         )}
-
-        {/* Top-K predictions */}
-        <View style={styles.section}>
-          <Card>
-            <View style={styles.topKHeader}>
-              <Icon name="bar-chart" size={20} color={Colors.primary} />
-              <Text style={styles.topKTitle}>All Predictions</Text>
-            </View>
-            {result.topK.map((item, index) => (
-              <ConfidenceBar
-                key={item.className}
-                label={item.className}
-                confidence={item.confidence}
-                isTop={index === 0}
-              />
-            ))}
-          </Card>
-        </View>
-
-        {/* Scan again button */}
-        <View style={styles.ctaSection}>
-          <Button
-            title="Scan Another Leaf"
-            size="large"
-            onPress={() => navigation.goBack()}
-            icon={<Icon name="camera" size={22} color={Colors.textOnPrimary} />}
-            style={styles.fullWidth}
-          />
-        </View>
       </ScrollView>
+
+      {/* Fixed CTA — always visible */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+        <Button
+          title="Scan Another Leaf"
+          size="large"
+          onPress={() => navigation.goBack()}
+          icon={<Icon name="camera" size={22} color={Colors.textOnPrimary} />}
+          style={styles.fullWidth}
+        />
+      </View>
     </View>
   );
 }
@@ -93,24 +94,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.lg,
+    paddingBottom: Spacing.lg,
   },
   section: {
     marginTop: Spacing.lg,
   },
-  ctaSection: {
-    marginTop: Spacing['2xl'],
-  },
-  fullWidth: {
-    width: '100%',
-  },
-  topKHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-  topKTitle: {
+  sectionTitle: {
     ...Typography.h3,
     color: Colors.primaryDark,
+  },
+  footer: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.borderLight,
+  },
+  fullWidth: {
+    width: '100%',
   },
 });

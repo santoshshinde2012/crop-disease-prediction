@@ -1,12 +1,10 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HeroSection } from '../components/home/HeroSection';
 import { FeatureCard } from '../components/home/FeatureCard';
 import { Button } from '../components/ui/Button';
-import { ModeToggle } from '../components/ui/ModeToggle';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Colors, Spacing } from '../theme';
 import type { RootStackParamList } from '../types';
@@ -15,7 +13,6 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
@@ -23,15 +20,10 @@ export function HomeScreen() {
       <ScrollView
         bounces={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + Spacing['5xl'] }]}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Hero */}
+        {/* Hero (includes mode toggle) */}
         <HeroSection />
-
-        {/* Inference mode toggle */}
-        <View style={styles.toggleContainer}>
-          <ModeToggle />
-        </View>
 
         {/* Features */}
         <View style={styles.features}>
@@ -50,22 +42,22 @@ export function HomeScreen() {
           <FeatureCard
             icon="library"
             title="Disease Library"
-            description="Browse 15 supported diseases with clear guidance and recommendations."
+            description="Browse 15 supported diseases with clear guidance."
             color="#7B1FA2"
           />
         </View>
-
-        {/* CTA Button */}
-        <View style={styles.ctaContainer}>
-          <Button
-            title="Scan a Leaf"
-            size="large"
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Scan' })}
-            icon={<Icon name="scan" size={22} color={Colors.textOnPrimary} />}
-            style={styles.ctaButton}
-          />
-        </View>
       </ScrollView>
+
+      {/* Fixed CTA — always visible */}
+      <View style={styles.footer}>
+        <Button
+          title="Scan a Leaf"
+          size="large"
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Scan' })}
+          icon={<Icon name="scan" size={22} color={Colors.textOnPrimary} />}
+          style={styles.ctaButton}
+        />
+      </View>
     </View>
   );
 }
@@ -76,20 +68,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    // paddingBottom set dynamically for safe area
-  },
-  toggleContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
-    alignItems: 'center',
+    paddingBottom: Spacing.lg,
   },
   features: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
+    paddingTop: Spacing.lg,
   },
-  ctaContainer: {
+  footer: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.borderLight,
   },
   ctaButton: {
     width: '100%',

@@ -2,13 +2,12 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
-  View,
   StyleSheet,
   ViewStyle,
   ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Colors, Gradients, Typography, Spacing, Radius, Shadows } from '../../theme';
+import { Colors, Gradients, Typography, Spacing, Radius } from '../../theme';
 
 interface ButtonProps {
   title: string;
@@ -36,32 +35,36 @@ export function Button({
 
   if (variant === 'primary') {
     return (
-      <View style={[styles.shadowWrapper, isLarge && styles.shadowWrapperLarge, style]}>
-        <TouchableOpacity
-          onPress={onPress}
-          disabled={isDisabled}
-          activeOpacity={0.8}
-          style={[styles.touchable, isLarge && styles.touchableLarge]}
-        >
-          <LinearGradient
-            colors={isDisabled ? ['#9E9E9E', '#BDBDBD'] : [...Gradients.primary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.base, isLarge && styles.baseLarge]}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.textOnPrimary} size="small" />
-            ) : (
-              <>
-                {icon}
-                <Text style={[Typography.button, styles.primaryText, isLarge && styles.textLarge]}>
-                  {title}
-                </Text>
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={isDisabled}
+        activeOpacity={0.8}
+        style={[
+          styles.base,
+          isLarge && styles.baseLarge,
+          isDisabled && styles.disabled,
+          { overflow: 'hidden' },
+          style,
+        ]}
+      >
+        {/* Gradient as absolute background — never drives layout */}
+        <LinearGradient
+          colors={isDisabled ? ['#9E9E9E', '#BDBDBD'] : [...Gradients.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {loading ? (
+          <ActivityIndicator color={Colors.textOnPrimary} size="small" />
+        ) : (
+          <>
+            {icon}
+            <Text style={[Typography.button, styles.primaryText, isLarge && styles.textLarge]}>
+              {title}
+            </Text>
+          </>
+        )}
+      </TouchableOpacity>
     );
   }
 
@@ -102,33 +105,17 @@ export function Button({
 }
 
 const styles = StyleSheet.create({
-  shadowWrapper: {
-    borderRadius: Radius.lg,
-    ...Shadows.lg,
-  },
-  shadowWrapperLarge: {
-    borderRadius: Radius.xl,
-  },
-  touchable: {
-    borderRadius: Radius.lg,
-    overflow: 'hidden',
-  },
-  touchableLarge: {
-    borderRadius: Radius.xl,
-  },
   base: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    height: 54,
     paddingHorizontal: Spacing['2xl'],
     borderRadius: Radius.lg,
     gap: Spacing.sm,
-    minHeight: 54,
   },
   baseLarge: {
-    paddingVertical: Spacing.lg,
-    minHeight: 58,
+    height: 58,
     borderRadius: Radius.xl,
   },
   primaryText: {

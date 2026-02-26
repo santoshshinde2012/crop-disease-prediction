@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { Card } from '../ui/Card';
+import LinearGradient from 'react-native-linear-gradient';
 import { Badge } from '../ui/Badge';
-import { Colors, Typography, Spacing, Radius } from '../../theme';
+import { Colors, Typography, Spacing, Radius, Shadows } from '../../theme';
 import type { PredictionResult } from '../../types';
 
 interface DiagnosisCardProps {
@@ -13,71 +13,116 @@ interface DiagnosisCardProps {
 export function DiagnosisCard({ result, imagePath }: DiagnosisCardProps) {
   const confidencePercent = (result.confidence * 100).toFixed(1);
   const isHealthy = result.severity === 'None';
+  const displayName = isHealthy
+    ? 'Healthy'
+    : result.disease.split(': ')[1] || result.disease;
+  const severityColor = isHealthy
+    ? Colors.severityNone
+    : result.severity === 'High'
+      ? Colors.severityHigh
+      : Colors.severityModerate;
 
   return (
-    <Card style={styles.card}>
-      {/* Leaf image thumbnail */}
-      <Image source={{ uri: imagePath }} style={styles.image} />
-
-      <View style={styles.content}>
-        {/* Crop label */}
-        <Text style={styles.cropLabel}>{result.crop}</Text>
-
-        {/* Disease name */}
-        <Text style={styles.diseaseName}>
-          {isHealthy ? 'Healthy' : result.disease.split(': ')[1] || result.disease}
-        </Text>
-
-        {/* Severity badge */}
-        <Badge severity={result.severity} />
-
-        {/* Confidence */}
-        <View style={styles.confidenceRow}>
-          <Text style={styles.confidenceValue}>{confidencePercent}%</Text>
-          <Text style={styles.confidenceLabel}>confidence</Text>
+    <View style={styles.container}>
+      {/* Image hero with gradient overlay */}
+      <View style={styles.imageWrapper}>
+        <Image
+          source={{ uri: imagePath }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.65)']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.imageContent}>
+          <Text style={styles.cropLabel}>{result.crop}</Text>
+          <Text style={styles.diseaseName}>{displayName}</Text>
+          <Badge severity={result.severity} />
         </View>
       </View>
-    </Card>
+
+      {/* Quick stats row */}
+      <View style={styles.statsRow}>
+        <View style={styles.stat}>
+          <Text style={[styles.statValue, { color: Colors.primaryDark }]}>
+            {confidencePercent}%
+          </Text>
+          <Text style={styles.statLabel}>Confidence</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.stat}>
+          <Text style={[styles.statValue, { color: severityColor }]}>
+            {isHealthy ? 'Healthy' : result.severity}
+          </Text>
+          <Text style={styles.statLabel}>Severity</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.stat}>
+          <Text style={styles.statValue}>{result.crop}</Text>
+          <Text style={styles.statLabel}>Crop</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    padding: 0,
+  container: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
     overflow: 'hidden',
+    ...Shadows.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.borderLight,
   },
-  image: {
-    width: '100%',
-    height: 220,
-    resizeMode: 'cover',
+  imageWrapper: {
+    height: 240,
+    justifyContent: 'flex-end',
   },
-  content: {
+  imageContent: {
     padding: Spacing.lg,
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
   cropLabel: {
     ...Typography.caption,
-    color: Colors.primary,
+    color: 'rgba(255,255,255,0.85)',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    fontWeight: '600',
+    letterSpacing: 1.5,
+    fontWeight: '700',
   },
   diseaseName: {
-    ...Typography.h2,
-    color: Colors.textPrimary,
+    ...Typography.h1,
+    color: Colors.textOnDark,
+    fontSize: 26,
+    lineHeight: 32,
   },
-  confidenceRow: {
+  statsRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: Spacing.sm,
-    marginTop: Spacing.xs,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.borderLight,
   },
-  confidenceValue: {
-    ...Typography.display,
-    color: Colors.primaryDark,
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
   },
-  confidenceLabel: {
-    ...Typography.body,
+  statValue: {
+    ...Typography.h3,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    fontSize: 17,
+  },
+  statLabel: {
+    ...Typography.caption,
     color: Colors.textSecondary,
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
   },
 });

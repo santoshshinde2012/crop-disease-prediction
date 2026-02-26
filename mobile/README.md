@@ -250,18 +250,6 @@ For iOS, use: `maestro test -e appId=org.reactjs.native.example.CropDiseaseApp .
 
 ---
 
-## SOLID Principles
-
-| Principle | Implementation |
-|-----------|---------------|
-| **Single Responsibility** | `classifier.ts` (ML inference only), `imageProcessor.ts` (image I/O only), `storage.ts` (persistence only), `usePrediction.ts` (orchestration only) |
-| **Open/Closed** | New model formats can be supported by creating a new classifier service without modifying screens or hooks |
-| **Liskov Substitution** | `classifier.ts` exposes `loadModel()`, `predict()`, `releaseModel()` — any inference backend implementing this interface is swappable |
-| **Interface Segregation** | Screens depend on `usePrediction` hook (minimal interface), not on the full classifier API |
-| **Dependency Inversion** | Screens depend on abstractions (hooks/context), not on concrete services |
-
----
-
 ## Troubleshooting
 
 ### Model file not found

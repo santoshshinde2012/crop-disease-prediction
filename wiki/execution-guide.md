@@ -1,31 +1,25 @@
 # Execution Guide
 
-End-to-end steps to run the Crop Disease Classification project.
+Run the project components in order. Each step builds on the previous one.
 
----
+```
+Setup → Notebook → Streamlit → REST API → TFLite Export → Mobile App → WhatsApp Bot
+                   (optional)   (optional)   (optional)     (optional)   (optional)
+```
 
-## Deliverables (Assignment)
-
-| # | Deliverable | Location |
-|---|------------|----------|
-| 1 | Presentation (20 min) | To be created |
-| 2 | Jupyter Notebook | `notebooks/crop_disease_classification.ipynb` |
-| 3 | README.md | `README.md` |
-| 4 | Saved model file | `checkpoints/best_model.pth` |
+> Only **Setup** and **Notebook** are required for the assignment. Everything after is optional.
 
 ---
 
 ## Step 1 — Setup
 
 ```bash
-# Install Python dependencies
 pip install -r requirements.txt
 
-# Configure Kaggle API (one-time)
-# Download kaggle.json from https://www.kaggle.com/settings → "Create New Token"
+# Kaggle API (one-time): download kaggle.json from https://www.kaggle.com/settings
 mkdir -p ~/.kaggle && mv ~/Downloads/kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
 
-# Download PlantVillage dataset (~2 GB, ~54,000 images)
+# Download dataset (~2 GB)
 kaggle datasets download -d abdallahalidev/plantvillage-dataset
 unzip -q plantvillage-dataset.zip -d plantvillage-dataset
 
@@ -36,91 +30,45 @@ ln -sf "$(pwd)/plantvillage-dataset/plantvillage dataset/color" data/raw/color
 
 ---
 
-## Step 2 — Jupyter Notebook (Parts 1–3)
+## Step 2 — Jupyter Notebook
 
-This is the **primary deliverable**. Run all cells top to bottom.
+> **Primary deliverable.** Run all cells top to bottom.
 
 ```bash
-cd notebooks
-jupyter notebook crop_disease_classification.ipynb
+cd notebooks && jupyter notebook crop_disease_classification.ipynb
 ```
 
-### Part 1: Data Exploration
+| Part | What happens | Key output |
+|------|-------------|------------|
+| **Part 1** | Data exploration — class distribution, sample images, 3 insights | `outputs/plots/class_distribution.png`, `sample_images.png` |
+| **Part 2** | Model building — augmentation, MobileNetV2, two-phase training | `checkpoints/best_model.pth` |
+| **Part 3** | Evaluation — confusion matrix, correct/incorrect predictions, business recommendation | `outputs/plots/confusion_matrix.png`, `outputs/metrics/results.json` |
 
-| Cell | Section | What It Does | Output |
-|------|---------|-------------|--------|
-| 0 | Intro | Markdown: objective, approach, tech stack | — |
-| 1 | Setup | Import `src/` modules, detect device (MPS/CUDA/CPU), set seed | — |
-| 2 | — | Markdown: Part 1 heading | — |
-| 3 | 1.1 Load Dataset | `get_class_counts()` → prints 15 classes with image counts (22,115 total) | Console |
-| 4 | — | Markdown: class distribution heading | — |
-| 5 | 1.2 Class Distribution | `plot_class_distribution()` → bar chart, color-coded by crop | `outputs/plots/class_distribution.png` |
-| 6 | — | Markdown: sample images heading | — |
-| 7 | 1.3 Sample Images | `plot_sample_images()` → grid of 4 images from 5 classes | `outputs/plots/sample_images.png` |
-| 8 | — | Markdown: key insights heading | — |
-| 9 | 1.4 Key Insights | `print_insights()` → imbalance ratio, crop distribution, image dimensions | Console |
+**Runtime:** ~10-15 min (GPU) / ~30-45 min (CPU)
 
-### Part 2: Model Building
-
-| Cell | Section | What It Does | Output |
-|------|---------|-------------|--------|
-| 10 | — | Markdown: Part 2 heading | — |
-| 11 | 2.1 Data Loading | `create_data_loaders()` → 80/20 train/val split with augmentation, weighted sampler | Console |
-| 12 | Augmentation | `plot_augmentation_examples()` → original vs 9 augmented versions | `outputs/plots/augmentation_examples.png` |
-| 13 | — | Markdown: MobileNetV2 rationale | — |
-| 14 | 2.2 Build Model | `build_model()` → MobileNetV2 + custom head (2.4M params) | Console |
-| 15 | — | Markdown: two-phase training explanation | — |
-| 16 | 2.3 Train | `train_model()` → Phase 1: 5 epochs (head only), Phase 2: up to 10 epochs (fine-tune) | `checkpoints/best_model.pth` |
-| 17 | Training Curves | `plot_training_history()` → accuracy & loss over both phases | `outputs/plots/training_history.png` |
-
-### Part 3: Evaluation & Business Impact
-
-| Cell | Section | What It Does | Output |
-|------|---------|-------------|--------|
-| 18 | — | Markdown: Part 3 heading | — |
-| 19 | 3.1 Evaluate | Load best weights, `collect_predictions()`, `print_classification_report()` | Console (97.8% accuracy) |
-| 20 | — | Markdown: confusion matrix heading | — |
-| 21 | 3.2 Confusion Matrix | `plot_confusion_matrix()` → 15×15 heatmap | `outputs/plots/confusion_matrix.png` |
-| 22 | — | Markdown: correct/incorrect heading | — |
-| 23 | 3.3 Predictions | `plot_correct_incorrect()` → 5 correct + 5 incorrect with images | `outputs/plots/correct_predictions.png`, `incorrect_predictions.png` |
-| 24 | — | Markdown: per-class heading | — |
-| 25 | 3.4 Per-Class | `plot_per_class_accuracy()` → bar chart (green ≥90%, yellow ≥80%, red <80%) | `outputs/plots/per_class_accuracy.png` |
-| 26 | — | Markdown: business recommendation heading | — |
-| 27 | 3.5 Deployment Analysis | Prints model size (9.3 MB), inference time, accuracy, param count | Console |
-| 28 | — | Markdown: business recommendation (MobileNetV2 vs ResNet50 vs EfficientNet comparison) | — |
-| 29 | — | Markdown: save heading | — |
-| 30 | 3.6 Save Results | `save_results()` → class names, metrics JSON, summary CSV | `outputs/metrics/` |
-| 31 | Part 4 | Markdown: Streamlit app and REST API instructions | — |
-
-### Generated Artifacts
+<details>
+<summary>Generated artifacts</summary>
 
 ```
-checkpoints/best_model.pth                    # 9.3 MB PyTorch model weights
-exports/crop_disease_classifier.tflite        # 9.1 MB TFLite model (from Step 5)
-outputs/plots/class_distribution.png          # Class distribution bar chart
-outputs/plots/sample_images.png               # Sample images grid
-outputs/plots/augmentation_examples.png       # Augmentation examples
-outputs/plots/training_history.png            # Training curves
-outputs/plots/confusion_matrix.png            # 15×15 confusion matrix
-outputs/plots/correct_predictions.png         # Top 5 correct predictions
-outputs/plots/incorrect_predictions.png       # Top 5 incorrect predictions
-outputs/plots/per_class_accuracy.png          # Per-class accuracy bar chart
-outputs/metrics/class_names.json              # 15 class labels
-outputs/metrics/results.json                  # Full classification report
-outputs/metrics/classification_summary.csv    # Summary table
+checkpoints/best_model.pth                 # 9.3 MB model weights
+outputs/plots/class_distribution.png       # Class distribution bar chart
+outputs/plots/sample_images.png            # Sample images grid
+outputs/plots/augmentation_examples.png    # Augmentation examples
+outputs/plots/training_history.png         # Training curves
+outputs/plots/confusion_matrix.png         # 15x15 confusion matrix
+outputs/plots/correct_predictions.png      # Top 5 correct predictions
+outputs/plots/incorrect_predictions.png    # Top 5 incorrect predictions
+outputs/plots/per_class_accuracy.png       # Per-class accuracy bar chart
+outputs/metrics/class_names.json           # 15 class labels
+outputs/metrics/results.json               # Full classification report
+outputs/metrics/classification_summary.csv # Summary table
 ```
 
-### Runtime
-
-| Hardware | Time |
-|----------|------|
-| Apple MPS (M-series) | ~10–15 min |
-| NVIDIA CUDA | ~10–15 min |
-| CPU | ~30–45 min |
+</details>
 
 ---
 
-## Step 3 — Streamlit App (Part 4 Bonus)
+## Step 3 — Streamlit App
 
 > Requires: `checkpoints/best_model.pth` and `outputs/metrics/class_names.json` from Step 2.
 
@@ -129,17 +77,7 @@ streamlit run streamlit_app/app.py
 # Open http://localhost:8501
 ```
 
-| Page | Description |
-|------|-------------|
-| **Diagnosis** | Upload a leaf image → disease name, confidence %, severity, treatment, prevention |
-| **Model Performance** | Accuracy metrics, confusion matrix, training history, per-class performance |
-| **Disease Library** | Browse 15 diseases with crop filter tabs, symptoms, treatment |
-
-The Diagnosis page includes an **Online/Offline toggle**:
-- **Offline** (default): Uses the local PyTorch model via `DiseasePredictor`
-- **Online**: Sends images to the REST API (requires Step 4 API to be running)
-
-Stop: `Ctrl+C`
+Three pages: Diagnosis, Model Performance, Disease Library. Stop with `Ctrl+C`.
 
 ---
 
@@ -149,136 +87,67 @@ Stop: `Ctrl+C`
 
 ```bash
 uvicorn api.main:app --reload
-# Swagger UI: http://localhost:8000/docs
+# Swagger docs: http://localhost:8000/docs
 ```
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/health` | Health check with model status |
-| `POST` | `/api/v1/predict` | Upload leaf image → prediction JSON |
-| `GET` | `/api/v1/diseases` | List all 15 diseases (optional `?crop=` filter) |
-| `GET` | `/api/v1/diseases/{name}` | Single disease detail |
+Test: `curl -X POST http://localhost:8000/api/v1/predict -F "file=@path/to/leaf.jpg"`
 
-```bash
-# Test
-curl http://localhost:8000/api/v1/health
-curl -X POST http://localhost:8000/api/v1/predict -F "file=@path/to/leaf.jpg"
-```
-
-Stop: `Ctrl+C`
+Stop with `Ctrl+C`.
 
 ---
 
-## Step 5 — Export TFLite Model (Mobile)
+## Step 5 — TFLite Export
 
 > Requires: `checkpoints/best_model.pth` from Step 2.
 
 ```bash
-# Install export dependencies (torch already installed from requirements.txt)
 pip install onnx==1.16.2 onnx2tf tensorflow
-
-# Export: PyTorch → ONNX → TFLite (via onnx2tf)
 python scripts/export_model.py
-# Output: exports/crop_disease_classifier.tflite (~9 MB)
-#         + copied to mobile/assets/model/ for Metro bundling
-```
-
-Optional — sync mobile asset data if class names or disease info changed:
-
-```bash
-python scripts/sync_mobile_assets.py
+# Output: exports/crop_disease_classifier.tflite (auto-copied to mobile/assets/model/)
 ```
 
 ---
 
-## Step 6 — Mobile App (React Native)
+## Step 6 — Mobile App
 
-> Requires: `exports/crop_disease_classifier.tflite` from Step 5 (auto-copied to `mobile/assets/model/`).
+> Requires: TFLite model from Step 5.
 
 ```bash
-cd mobile
-npm install
-
-# iOS
+cd mobile && npm install
 cd ios && pod install && cd ..
-npm run ios                  # or: npm start (Terminal 1) + npm run ios:no-packager (Terminal 2)
-
-# Android
-npx react-native run-android
+npx react-native run-ios        # or: npx react-native run-android
 ```
-
-| Screen | What It Does |
-|--------|-------------|
-| **Home** | Gradient hero with stats (97.8% / 15 diseases / <1s), pill-shaped online/offline toggle, feature cards, large "Scan a Leaf" CTA |
-| **Camera** | Online/offline toggle (translucent on camera, card on simulator), dashed guide circle, large capture button, gallery picker, status indicator |
-| **Result** | Leaf thumbnail, disease name, severity badge, confidence %, treatment card, symptoms, prevention, animated top-5 bars, "Scan Another Leaf" CTA |
-| **History** | Past scans saved locally (offline) — card list with thumbnails, badges, confidence, timestamp |
-| **Library** | Browse 15 diseases with pill-shaped crop filter tabs, section headers with count badges |
-
-The app supports **Online/Offline mode** (toggle on Home and Camera screens):
-- **Offline** (default): On-device TFLite inference — no server required
-- **Online**: Sends images to the REST API (requires Step 4 API running at `localhost:8000`)
 
 ---
 
-## Step 7 — WhatsApp Bot (Twilio)
+## Step 7 — WhatsApp Bot
 
-> Requires: REST API running (Step 4) and a [Twilio account](https://www.twilio.com/try-twilio).
-
-Full guide: [WhatsApp Integration Guide](whatsapp-integration.md)
+> Requires: REST API running (Step 4) + [Twilio account](https://www.twilio.com/try-twilio).
 
 ```bash
-# Configure credentials
-cp .env.example .env
-# Edit .env with TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
-# Set WHATSAPP_ENABLE_SIGNATURE_VALIDATION=false for local dev
-
-# Start API (if not already running)
-uvicorn api.main:app --reload --port 8000
-
-# Tunnel with ngrok (separate terminal)
-ngrok http 8000
-# Copy the HTTPS URL → set as webhook in Twilio Console sandbox settings
-
-# Run tests
-pytest tests/test_whatsapp.py -v
+cp .env.example .env             # fill in TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
+uvicorn api.main:app --reload    # start API (if not already running)
+ngrok http 8000                  # in a separate terminal — copy HTTPS URL to Twilio Console
 ```
 
-| Message | Response |
-|---------|----------|
-| `hi` | Welcome message with instructions |
-| `help` | Supported commands and photo tips |
-| Leaf photo (JPEG/PNG) | Disease diagnosis with treatment and prevention |
+Set `WHATSAPP_ENABLE_SIGNATURE_VALIDATION=false` in `.env` for local dev.
 
----
-
-## Step 8 — E2E Testing (Optional)
-
-> Requires: Built app from Step 6 and [Maestro CLI](https://maestro.mobile.dev/getting-started/installation).
-
-```bash
-curl -Ls "https://get.maestro.mobile.dev" | bash
-cd mobile
-maestro test .maestro/flows/
-# iOS: maestro test -e appId=org.reactjs.native.example.CropDiseaseApp .maestro/flows/
-```
+Full guide: [whatsapp-integration.md](whatsapp-integration.md)
 
 ---
 
 ## Quick Reference
 
 ```
-1. pip install -r requirements.txt              # Python deps
-2. kaggle datasets download ...                 # Dataset (~2 GB)
-3. mkdir -p data/raw && ln -sf ...              # Data symlink
-4. jupyter notebook notebooks/...               # Notebook (Parts 1–3)
-5. streamlit run streamlit_app/app.py           # Streamlit (Part 4)
-6. uvicorn api.main:app --reload                # REST API
-7. pip install onnx==1.16.2 onnx2tf tensorflow  # Export deps
-8. python scripts/export_model.py               # TFLite model
-9. cd mobile && npm install                     # Mobile deps
-10. cd ios && pod install && cd .. && npm run ios  # Run app
-11. cp .env.example .env && ngrok http 8000     # WhatsApp bot
+1. pip install -r requirements.txt
+2. kaggle datasets download -d abdallahalidev/plantvillage-dataset
+3. mkdir -p data/raw && ln -sf "$(pwd)/plantvillage-dataset/plantvillage dataset/color" data/raw/color
+4. cd notebooks && jupyter notebook crop_disease_classification.ipynb
+5. streamlit run streamlit_app/app.py
+6. uvicorn api.main:app --reload
+7. pip install onnx==1.16.2 onnx2tf tensorflow && python scripts/export_model.py
+8. cd mobile && npm install && cd ios && pod install && cd .. && npx react-native run-ios
+9. cp .env.example .env && ngrok http 8000
 ```
 
 ---
