@@ -6,7 +6,7 @@ Mermaid architecture diagrams for the Crop Disease Classification system.
 
 ## 1. System Overview
 
-PlantVillage dataset trains a MobileNetV2 model. The PyTorch model (`best_model.pth`) serves Streamlit and FastAPI directly. An export script converts it to TFLite for the React Native mobile app. Streamlit and Mobile support **online/offline mode** — offline uses local models, online delegates to the REST API.
+PlantVillage dataset trains a MobileNetV2 model. The PyTorch model (`best_model.pth`) serves Streamlit, FastAPI, and the WhatsApp bot (via Twilio) directly. An export script converts it to TFLite for the React Native mobile app. Streamlit and Mobile support **online/offline mode** — offline uses local models, online delegates to the REST API.
 
 ```mermaid
 architecture-beta
@@ -18,6 +18,7 @@ architecture-beta
     service pth(disk)[best_model pth]
     service streamlit(internet)[Streamlit App]
     service api(internet)[FastAPI]
+    service whatsapp(internet)[WhatsApp Bot]
     service exporter(server)[Export Script]
     service tflite(disk)[classifier tflite]
     service mobile(internet)[Mobile App]
@@ -27,6 +28,7 @@ architecture-beta
     evaluator{group}:R --> L:pth
     pth:R --> L:streamlit
     pth:T --> B:api
+    api:R --> L:whatsapp
     pth:B --> T:exporter
     exporter:R --> L:tflite
     tflite:R --> L:mobile
@@ -93,7 +95,7 @@ architecture-beta
 
 ## 4. Inference Flow
 
-Three parallel inference paths. Streamlit and Mobile support **online/offline mode** — offline uses local models, online delegates to the REST API. The online mode arrows show the delegation path to the API group.
+Four parallel inference paths. Streamlit and Mobile support **online/offline mode** — offline uses local models, online delegates to the REST API. The WhatsApp bot receives farmer photos via Twilio and returns diagnoses as TwiML. See [WhatsApp Integration Guide](whatsapp-integration.md) for full setup.
 
 ```mermaid
 architecture-beta
@@ -109,6 +111,10 @@ architecture-beta
         service mIn(server)[Camera Gallery] in mobile
         service mPredict(server)[TFLite Predict] in mobile
         service mOut(server)[Result Screen] in mobile
+    group whatsapp(cloud)[WhatsApp Bot]
+        service waIn(internet)[Twilio Webhook] in whatsapp
+        service waPredict(server)[Download Predict] in whatsapp
+        service waOut(internet)[TwiML Reply] in whatsapp
     service diseaseDb(database)[Disease Info]
     stIn:R --> L:stPredict
     stPredict:R --> L:stOut
@@ -116,8 +122,11 @@ architecture-beta
     apiPredict:R --> L:apiOut
     mIn:R --> L:mPredict
     mPredict:R --> L:mOut
+    waIn:R --> L:waPredict
+    waPredict:R --> L:waOut
     stIn{group}:B --> T:apiIn{group}
     mIn{group}:T --> B:apiIn{group}
+    waPredict{group}:T --> B:apiPredict{group}
     apiOut{group}:R --> L:diseaseDb
 ```
 

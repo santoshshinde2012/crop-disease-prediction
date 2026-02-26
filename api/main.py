@@ -1,11 +1,15 @@
 """
 Crop Disease Classification API
 
-Usage: uvicorn api.main:app --reload
+Usage:
+  Development : uvicorn api.main:app --reload
+  Production  : gunicorn api.main:app -k uvicorn.workers.UvicornWorker
+  Docker      : docker compose up
 """
 import logging
 import sys
 import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -16,10 +20,10 @@ from fastapi.responses import JSONResponse
 # Add project root to sys.path so `from src.*` imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.inference.predictor import DiseasePredictor  # noqa: E402
-
-from api.routers import diseases, health, prediction  # noqa: E402
+from api.config import API_VERSION, CORS_ORIGINS  # noqa: E402
 from api.exceptions import register_exception_handlers  # noqa: E402
+from api.routers import diseases, health, prediction, whatsapp  # noqa: E402
+from src.inference.predictor import DiseasePredictor  # noqa: E402
 
 # ── Logging ──────────────────────────────────────────────────────
 logging.basicConfig(
@@ -34,7 +38,7 @@ logger = logging.getLogger("api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load and verify ML model at startup; release at shutdown."""
-    logger.info("Starting Crop Disease Classification API ...")
+    logger.info("Starting Crop Disease Classification API v%s ...", API_VERSION)
     try:
         predictor = DiseasePredictor()
         logger.info(
@@ -67,7 +71,7 @@ app = FastAPI(
         "| Classes | 15 |\n"
         "| Inference | ~9 ms (GPU) |"
     ),
-    version="1.0.0",
+    version=API_VERSION,
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -90,6 +94,13 @@ app = FastAPI(
                 "with symptoms, treatment, and prevention info."
             ),
         },
+        {
+            "name": "WhatsApp",
+            "description": (
+                "Twilio WhatsApp webhook for crop disease "
+                "diagnosis via messaging."
+            ),
+        },
     ],
 )
 
@@ -97,24 +108,30 @@ app = FastAPI(
 # ── Middleware ────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """Log every request with method, path, status, and duration."""
+async def add_request_id(request: Request, call_next):
+    """Attach a unique request ID to every request/response for tracing."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = request_id
+
     start = time.perf_counter()
     response = await call_next(request)
     elapsed_ms = (time.perf_counter() - start) * 1000
+
+    response.headers["X-Request-ID"] = request_id
     logger.info(
-        "%s %s → %d (%.0f ms)",
+        "%s %s → %d (%.0f ms) [%s]",
         request.method,
         request.url.path,
         response.status_code,
         elapsed_ms,
+        request_id[:8],
     )
     return response
 
@@ -141,3 +158,4 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(prediction.router, prefix="/api/v1")
 app.include_router(diseases.router, prefix="/api/v1")
+app.include_router(whatsapp.router, prefix="/api/v1")

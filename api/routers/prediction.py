@@ -3,10 +3,10 @@ import logging
 import time
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
-from api.config import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_MB
+from api.config import ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE_MB, PREDICT_RATE_LIMIT_PER_MINUTE
 from api.dependencies import get_predictor
 from api.exceptions import FileTooLargeError, InvalidImageError
 from api.schemas.error import ErrorResponse
@@ -17,6 +17,30 @@ from src.inference.predictor import DiseasePredictor
 logger = logging.getLogger("api.prediction")
 
 router = APIRouter(tags=["Prediction"])
+
+# ── Simple in-memory rate limiter for the predict endpoint ────
+_predict_requests: dict[str, list[float]] = {}
+
+
+def _check_rate_limit(client_ip: str) -> None:
+    """Enforce per-IP rate limiting on the prediction endpoint."""
+    now = time.time()
+    cutoff = now - 60
+
+    timestamps = _predict_requests.get(client_ip, [])
+    timestamps = [t for t in timestamps if t > cutoff]
+
+    if len(timestamps) >= PREDICT_RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Rate limit exceeded. Maximum {PREDICT_RATE_LIMIT_PER_MINUTE} "
+                "predictions per minute. Please try again shortly."
+            ),
+        )
+
+    timestamps.append(now)
+    _predict_requests[client_ip] = timestamps
 
 
 @router.post(
@@ -32,16 +56,22 @@ router = APIRouter(tags=["Prediction"])
         400: {"model": ErrorResponse, "description": "Invalid image file"},
         413: {"model": ErrorResponse, "description": "File exceeds 10 MB limit"},
         422: {"model": ErrorResponse, "description": "Unsupported file type"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
         503: {"model": ErrorResponse, "description": "Model not loaded"},
     },
 )
-def predict_disease(
+async def predict_disease(
+    request: Request,
     file: UploadFile = File(..., description="Leaf image (JPEG or PNG, max 10 MB)"),
     top_k: int = Query(
         5, ge=1, le=15, description="Number of top predictions to return"
     ),
     predictor: DiseasePredictor = Depends(get_predictor),
 ):
+    # ── Rate limit ────────────────────────────────────────────────
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
     # ── Validate content type ────────────────────────────────────
     content_type = file.content_type or "unknown"
     if content_type not in ALLOWED_CONTENT_TYPES:
@@ -53,8 +83,8 @@ def predict_disease(
             ),
         )
 
-    # ── Read and validate file size ──────────────────────────────
-    contents = file.file.read()
+    # ── Read and validate file size (async) ───────────────────────
+    contents = await file.read()
     max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
     if len(contents) > max_bytes:
         raise FileTooLargeError(len(contents), max_bytes)

@@ -221,7 +221,38 @@ The app supports **Online/Offline mode** (toggle on Home and Camera screens):
 
 ---
 
-## Step 7 — E2E Testing (Optional)
+## Step 7 — WhatsApp Bot (Twilio)
+
+> Requires: REST API running (Step 4) and a [Twilio account](https://www.twilio.com/try-twilio).
+
+Full guide: [WhatsApp Integration Guide](whatsapp-integration.md)
+
+```bash
+# Configure credentials
+cp .env.example .env
+# Edit .env with TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
+# Set WHATSAPP_ENABLE_SIGNATURE_VALIDATION=false for local dev
+
+# Start API (if not already running)
+uvicorn api.main:app --reload --port 8000
+
+# Tunnel with ngrok (separate terminal)
+ngrok http 8000
+# Copy the HTTPS URL → set as webhook in Twilio Console sandbox settings
+
+# Run tests
+pytest tests/test_whatsapp.py -v
+```
+
+| Message | Response |
+|---------|----------|
+| `hi` | Welcome message with instructions |
+| `help` | Supported commands and photo tips |
+| Leaf photo (JPEG/PNG) | Disease diagnosis with treatment and prevention |
+
+---
+
+## Step 8 — E2E Testing (Optional)
 
 > Requires: Built app from Step 6 and [Maestro CLI](https://maestro.mobile.dev/getting-started/installation).
 
@@ -237,16 +268,17 @@ maestro test .maestro/flows/
 ## Quick Reference
 
 ```
-1. pip install -r requirements.txt             # Python deps
-2. kaggle datasets download ...                # Dataset (~2 GB)
-3. mkdir -p data/raw && ln -sf ...             # Data symlink
-4. jupyter notebook notebooks/...              # Notebook (Parts 1–3)
-5. streamlit run streamlit_app/app.py          # Streamlit (Part 4)
-6. uvicorn api.main:app --reload               # REST API
+1. pip install -r requirements.txt              # Python deps
+2. kaggle datasets download ...                 # Dataset (~2 GB)
+3. mkdir -p data/raw && ln -sf ...              # Data symlink
+4. jupyter notebook notebooks/...               # Notebook (Parts 1–3)
+5. streamlit run streamlit_app/app.py           # Streamlit (Part 4)
+6. uvicorn api.main:app --reload                # REST API
 7. pip install onnx==1.16.2 onnx2tf tensorflow  # Export deps
-8. python scripts/export_model.py              # TFLite model
-9. cd mobile && npm install                    # Mobile deps
+8. python scripts/export_model.py               # TFLite model
+9. cd mobile && npm install                     # Mobile deps
 10. cd ios && pod install && cd .. && npm run ios  # Run app
+11. cp .env.example .env && ngrok http 8000     # WhatsApp bot
 ```
 
 ---
@@ -262,3 +294,5 @@ maestro test .maestro/flows/
 | "No script URL provided" in simulator | Run `npm start` in a separate terminal, then reload (Cmd+R) |
 | Pod install fails | `cd mobile/ios && pod deintegrate && pod install --repo-update` |
 | Metro cache issues | `npx react-native start --reset-cache` |
+| "Invalid Twilio signature" in dev | Set `WHATSAPP_ENABLE_SIGNATURE_VALIDATION=false` in `.env` |
+| No WhatsApp response | Check ngrok is running and API shows incoming POST in logs |

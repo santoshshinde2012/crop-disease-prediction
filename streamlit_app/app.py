@@ -12,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import streamlit as st
 
 from styles import inject_css
-from pages import predict, dashboard, disease_library
+from views import predict, dashboard, disease_library
+from components import sidebar_brand
 
 # ── Page config (must be the first Streamlit command) ─────────
 st.set_page_config(
@@ -27,19 +28,25 @@ inject_css()
 
 # ── Multi-page navigation ────────────────────────────────────
 pages = st.navigation([
-    st.Page(predict.show, title="Diagnosis", icon="🔬", default=True),
-    st.Page(dashboard.show, title="Model Performance", icon="📊"),
-    st.Page(disease_library.show, title="Disease Library", icon="📚"),
+    st.Page(predict.show, title="Diagnosis", icon="🔬", default=True, url_path="diagnosis"),
+    st.Page(dashboard.show, title="Dashboard", icon="📊", url_path="dashboard"),
+    st.Page(disease_library.show, title="Disease Library", icon="📚", url_path="disease-library"),
 ])
 
 # ── Sidebar branding (shown on every page) ───────────────────
 with st.sidebar:
+    sidebar_brand()
     st.markdown("---")
     st.markdown(
-        "**Crop Disease Classifier**\n\n"
-        "MobileNetV2 | 97.8% Accuracy\n\n"
-        "PlantVillage Dataset | 15 Classes\n\n"
-        "Built with Streamlit\n\n")
+        "**MobileNetV2** architecture trained on the "
+        "**PlantVillage** dataset covering **3 crops** "
+        "and **15 disease classes**."
+    )
+    st.markdown(
+        "<br><span style='font-size:0.75rem;opacity:0.5'>"
+        "Built with Streamlit + PyTorch</span>",
+        unsafe_allow_html=True,
+    )
 
 # ── Run selected page ────────────────────────────────────────
 pages.run()
