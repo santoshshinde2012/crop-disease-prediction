@@ -305,6 +305,18 @@ All plots saved to `outputs/plots/` during notebook execution:
 | `correct_predictions.png` | 5 highest-confidence correct predictions |
 | `incorrect_predictions.png` | 5 highest-confidence errors (most informative failures) |
 
+### Limitations
+
+The headline 97.83% is validation accuracy on a held-out split of PlantVillage —
+the same distribution it trained on. PlantVillage is shot under lab conditions
+(a single detached leaf, uniform background), so field photographs with soil,
+shadow and overlapping leaves should be expected to score materially lower until
+that is measured. The model also has no abstain path: any image returns one of
+15 classes with a confidence, including a crop it has never seen.
+
+**[Read the model card →](MODEL_CARD.md)** — intended use, out-of-scope use,
+failure modes and calibration.
+
 ### Business Recommendation
 
 MobileNetV2 is the recommended model for a farmer-facing mobile app. It delivers **97.8% accuracy** at just **9.3 MB** (reducible to ~3 MB with TFLite INT8 quantization), with **~9 ms** GPU inference and **~30 ms** on-device via TFLite — fast enough for real-time use. While ResNet50 edges ahead at ~98.5% accuracy, its 97 MB model size makes it impractical for on-device deployment in rural areas with limited connectivity. MobileNetV2's depthwise separable convolutions provide the optimal accuracy-to-size tradeoff, and the model is easily extensible to all 38 PlantVillage classes through additional fine-tuning. This project validates the recommendation end-to-end: the same trained model runs in a Streamlit web app, a production REST API, a WhatsApp bot, and a React Native mobile app with offline inference.
