@@ -665,3 +665,7 @@ The selected mode persists across app restarts. When switching to online mode, t
 ---
 
 *Detailed guides: [`wiki/execution-guide.md`](wiki/execution-guide.md) (end-to-end execution order) | [`wiki/setup-guide.md`](wiki/setup-guide.md) (full prerequisites & setup) | [`wiki/assignment-answers.md`](wiki/assignment-answers.md) (assignment Q&A)*
+
+## Support
+
+[![Buy Me a Coffee](https://img.shields.io/badge/buymeacoffee-black?style=for-the-badge&logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/santoshshin)
